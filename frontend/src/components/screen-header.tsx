@@ -43,6 +43,6 @@ const useStyles = makeStyles((c) => ({
     borderBottomColor: c.border,
   },
   back: { width: 40, height: 40, alignItems: "center", justifyContent: "center", marginLeft: -spacing.sm },
-  title: { fontFamily: fonts.display, fontSize: 24, color: c.onSurface, letterSpacing: 0.5 },
+  title: { fontFamily: fonts.display, fontSize: 22, color: c.onSurface, letterSpacing: 0.5 },
   subtitle: { fontFamily: fonts.body, fontSize: 12, color: c.muted },
 }));

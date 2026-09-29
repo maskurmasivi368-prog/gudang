@@ -84,7 +84,7 @@ function IconGlyph({ name, color }: { name: string; color: string }) {
 
 const useStyles = makeStyles((c) => ({
   btn: {
-    minHeight: 56,
+    minHeight: 48,
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
@@ -92,5 +92,5 @@ const useStyles = makeStyles((c) => ({
   },
   ghost: { borderWidth: 1.5, borderColor: c.borderStrong },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  label: { fontFamily: fonts.bodySemi, fontSize: 17 },
+  label: { fontFamily: fonts.bodySemi, fontSize: 15 },
 }));

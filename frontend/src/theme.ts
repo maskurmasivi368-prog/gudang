@@ -69,7 +69,8 @@ export function makeStyles<T extends StyleSheet.NamedStyles<T> | StyleSheet.Name
 }
 
 // Shared design constants ---------------------------------------------------
-export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, "2xl": 32, "3xl": 48 } as const;
+// Compact density — more data per screen on larger displays.
+export const spacing = { xs: 4, sm: 6, md: 10, lg: 14, xl: 20, "2xl": 28, "3xl": 40 } as const;
 export const radius = { sm: 4, md: 8, lg: 12, pill: 999 } as const;
 
 export const fonts = {
