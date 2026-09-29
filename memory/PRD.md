@@ -32,18 +32,23 @@
 - JWT auth, admin seeding, role-based access (admin/staff). [2026-06]
 - Suppliers list/create (idempotent). [2026-06]
 - Products catalog, barcode lookup, last-cost endpoint. [2026-06]
-- Receive/Scan screen: supplier picker+add, manual barcode add, camera scanner (expo-camera,
-  scanBus), repeated-scan qty increment, qty steppers/manual edit, new-product modal, submit. [2026-06]
-- Audit screen: pending/approved filter, receipt detail with last price + editable cost, approve→POS sync. [2026-06]
-- Inventory/POS stock screen with search. [2026-06]
-- Account screen: profile, staff CRUD (admin), POS integration status, logout. [2026-06]
-- 21/21 backend tests pass; frontend flow verified. [2026-06]
+- Receive/Scan, Audit + pricing/approve → POS sync, Inventory, Staff CRUD. [2026-06]
+
+## Implemented — Complete Warehouse Suite (2026-06, session 2)
+- Multi-branch (cabang): branches CRUD, per-branch stock via stock_levels ledger. [2026-06]
+- Transfer antar cabang (Kirim→Terima): create deducts source, receive credits destination, cancel returns stock. [2026-06]
+- Stok Opname: scan physical count, system computes variance, auto-adjusts branch stock, saves report. [2026-06]
+- Barang Keluar (issue) with reason; deducts branch stock. [2026-06]
+- Laporan pergerakan stok (movement ledger) with type filter. [2026-06]
+- Menu hub tab (operations grid + staff + logout). Branch chip on Receive & Stok. [2026-06]
+- PDA-friendly barcode input: soft keyboard hidden by default (showSoftInputOnFocus=false) + manual-typing toggle. [2026-06]
+- 38/38 backend tests pass; all frontend flows verified. [2026-06]
 
 ## Backlog / Remaining
-- P1: Receipt reject/edit-before-approve; per-item note; unit/pack support.
-- P1: CSV/API export of approved purchases for external POS systems.
-- P2: Barcode not-found bulk handling; low-stock alerts screen; supplier price history chart.
-- P2: race-safe approve (guard double-increment); pointerEvents style migration (RN Web warning).
+- P1: Receipt reject/edit-before-approve; transfer edit before send.
+- P1: CSV/API export of approved purchases & movements for external POS.
+- P2: Low-stock alerts screen; supplier price history chart; opname full-snapshot (auto-zero uncounted).
+- P2: race-safe approve; pointerEvents style migration (RN Web warning).
 
 ## Next Tasks
-- Gather whether an external POS API sync (webhook/CSV) is needed beyond the built-in shared catalog.
+- Optional external POS webhook/CSV sync beyond the built-in shared catalog.

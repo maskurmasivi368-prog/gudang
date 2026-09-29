@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 3 — Large feature addition (multi-branch, transfers, opname, issues, movement ledger, per-branch stock, PDA barcode input UX). Backend: 38/38 pytest pass (17 new tests + 21 regression, sequential run). All new endpoints (/api/branches, /api/products?branch_id, /api/transfers, /api/opnames, /api/issues, /api/movements) work exactly per spec, including immediate source deduction on transfer create, destination credit on receive, cancel returns stock, opname diff computation & auto-adjust, issue records reason & deducts, per-branch stock projection, and admin-only branch mutations (staff 403). Regression: login, receipt→approve→POS sync, staff CRUD still pass. Frontend (mobile viewport 390x844): Login OK, Menu tab shows Ops grid (Transfer/Opname/Barang Keluar/Laporan Stok/Kelola Cabang admin-only) + logout, Stok tab shows Gudang Pusat branch chip with per-branch total, Kelola Cabang create+toggle works (UI_Test_XXXX added & shown in list with Nonaktifkan/Aktifkan). BranchPicker Modal renders branch-option-<id> testIDs (6 options seen). Transfer create end-to-end works: pick-from-branch → pick-to-branch → barcode-input + barcode-add-button adds Indomie row, submit shows 'Transfer dibuat, stok keluar dari asal' and appears in /transfer list as 'Dikirim' with Konfirmasi Terima/Batal buttons. Opname create adjusts stock & lists with variance (+69 for Teh Botol). Issue Rusak reason chip works and reason-<x> testIDs render. Movements /movements page renders as 'LAPORAN STOK' with filter chips (Semua/Terima/Transfer Masuk/Transfer Keluar/...) and ledger entries with signed qty + branch. Barcode input renders barcode-keyboard-toggle icon on all scan screens; barcode-add-button appears only when value length > 0 (by design). One minor UX issue: transfer-new / opname-new / issue-new call router.back() after submit; when a user hard-navigates or refreshes on these screens, a 'GO_BACK not handled' toast appears (submit still succeeds and data is persisted). Cosmetic 'props.pointerEvents is deprecated' RN-Web warning persists (carryover).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "transfer-new / opname-new / issue-new", "issue": "After successful submit the screen calls router.back(); when reached via direct URL/refresh there is no history to pop and a 'The action GO_BACK was not handled' toast appears. Data still persists correctly. Consider router.replace('/transfer' | '/opname' | '/issue') fallback when !router.canGoBack().", "testID": "submit-transfer-button / submit-opname-button / submit-issue-button", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "global (RN-Web)", "issues": ["Console warning 'props.pointerEvents is deprecated. Use style.pointerEvents' persists (cosmetic, carryover from iter 1-2)."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_branches_and_ops.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(LOW) In app/transfer-new.tsx, app/opname-new.tsx, app/issue-new.tsx: after submit success, use `if (router.canGoBack()) router.back(); else router.replace('/transfer' | '/opname' | '/issue')` to avoid the GO_BACK toast on direct navigation / hard refresh."
+  ],
+  "critical_code_review_comments": [
+    "server.py:38 module-level `app = FastAPI()` with `@app.on_event('startup')` still uses deprecated FastAPI events API (works, but consider lifespan handlers).",
+    "server.py branch_stock_map / snapshot loads up to 1000 products per branch — scale concern noted but acceptable at this iteration.",
+    "record_movement() always increments product-level `stock` in addition to per-branch stock_levels; that keeps the shared POS catalog `stock` accurate as the sum across branches. Good.",
+    "Transfer cancel and receive both use mtype 'transfer_in' in the ledger for cancellation (server.py:788), which merges 'return to source' with 'received at destination'. Consider a distinct mtype like 'transfer_cancel' for cleaner reports (movement report currently still shows both correctly signed).",
+    "opname_snapshot iterates all products with limit(1000); OK for demo scale."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (38/38 sequential; parallel run has 3 flakes due to shared-barcode contention between old & new tests — not a product bug)", "frontend": "100% on core flows validated (Menu ops grid, per-branch chip, branch CRUD, transfer create+list, opname create+list, issue reason chips, movements ledger, barcode-keyboard-toggle)"},
+  "seed_data_creation": "Backend tests generated: TEST_br_* branches (some left toggled off), TEST_ops_* staff, additional TEST_ suppliers, several purchase-history + movement rows on Gudang Pusat & Cabang Selatan (Indomie/Aqua stock now ~43/54). Frontend test created branch UI_Test_XXXX and several transfers (Dikirim/Diterima/Dibatalkan) plus one opname (Teh Botol Sosro physical=99, diff +69) and one issue on Kopi Kapal Api. Not cleaned up — safe to leave.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "For pytest run sequentially: `pytest /app/backend/tests/ -v -o addopts='' --junitxml=/app/test_reports/pytest/pytest_results.xml`. Parallel (default from pytest.ini with xdist) has race conditions between backend_test.py::TestReceiptsFlow and test_branches_and_ops.py because both mutate stock for BC_INDOMIE / BC_AQUA on the main branch. Frontend routes: /transfer, /transfer-new, /opname, /opname-new, /issue, /issue-new, /movements, /branches. BranchPicker options: [data-testid=branch-option-<id>]. Reason chips: [data-testid=reason-<Rusak|Kadaluarsa|Sampel|Pemakaian Internal>]. Camera scan cannot be exercised on web preview — only manual barcode-input flow. showSoftInputOnFocus is native-only (cannot be verified on web), but the toggle icon is rendered and clickable.",
+  "rca_of_issue": "N/A — no critical bug. Only a low-priority UX polish item: router.back() after submit fails on direct navigation because there's no back-stack. Fix: check router.canGoBack() and fallback to router.replace(<list route>)."
+}

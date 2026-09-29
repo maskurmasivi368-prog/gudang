@@ -57,6 +57,8 @@ export interface Receipt {
   id: string;
   supplier_id: string;
   supplier_name: string;
+  branch_id: string;
+  branch_name: string;
   status: "pending_audit" | "approved";
   items: ReceiptItem[];
   created_by_name: string;
@@ -70,4 +72,40 @@ export interface Receipt {
 export interface LastCost {
   barcode: string; last_cost: number; last_supplier: string;
   last_purchased_at: string | null; found: boolean;
+}
+export interface Branch {
+  id: string; name: string; code: string; address: string; is_main: boolean; active: boolean;
+}
+export interface TransferLine { product_id: string; barcode: string; name: string; qty: number }
+export interface Transfer {
+  id: string;
+  from_branch_id: string; from_branch_name: string;
+  to_branch_id: string; to_branch_name: string;
+  status: "pending" | "received" | "cancelled";
+  items: TransferLine[];
+  note: string;
+  total_qty: number;
+  created_by_name: string;
+  created_at: string;
+  received_at: string | null;
+  received_by_name: string | null;
+}
+export interface OpnameLine {
+  product_id: string; barcode: string; name: string;
+  system_qty: number; physical_qty: number; diff: number;
+}
+export interface Opname {
+  id: string; branch_id: string; branch_name: string; status: string;
+  items: OpnameLine[]; note: string; total_diff: number;
+  created_by_name: string; created_at: string;
+}
+export interface IssueLine { product_id: string; barcode: string; name: string; qty: number }
+export interface Issue {
+  id: string; branch_id: string; branch_name: string; reason: string;
+  items: IssueLine[]; note: string; total_qty: number;
+  created_by_name: string; created_at: string;
+}
+export interface Movement {
+  id: string; barcode: string; name: string; branch_id: string; branch_name: string;
+  qty: number; type: string; note: string; user_name: string; created_at: string;
 }

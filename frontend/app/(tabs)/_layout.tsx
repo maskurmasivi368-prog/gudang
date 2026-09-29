@@ -26,8 +26,8 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Label>Stok</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="account">
-          <NativeTabs.Trigger.Icon sf="person.fill" />
-          <NativeTabs.Trigger.Label>Akun</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="square.grid.2x2.fill" />
+          <NativeTabs.Trigger.Label>Menu</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
     );
@@ -79,9 +79,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          title: "Akun",
+          title: "Menu",
           tabBarIcon: ({ color, size }) => (
-            <MaterialDesignIcons name="account-circle-outline" size={size} color={color} />
+            <MaterialDesignIcons name="view-grid-outline" size={size} color={color} />
           ),
         }}
       />

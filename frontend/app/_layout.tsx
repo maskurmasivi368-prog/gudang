@@ -12,6 +12,7 @@ import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { queryClient } from "@/src/query-client";
 import { AuthProvider } from "@/src/auth";
+import { BranchProvider } from "@/src/branch";
 import { ToastProvider } from "@/src/toast";
 
 LogBox.ignoreAllLogs(true);
@@ -42,14 +43,24 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <KeyboardProvider>
               <AuthProvider>
-                <ToastProvider>
-                  <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#121212" } }}>
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="login" />
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="scan" options={{ presentation: "fullScreenModal" }} />
-                  </Stack>
-                </ToastProvider>
+                <BranchProvider>
+                  <ToastProvider>
+                    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#121212" } }}>
+                      <Stack.Screen name="index" />
+                      <Stack.Screen name="login" />
+                      <Stack.Screen name="(tabs)" />
+                      <Stack.Screen name="scan" options={{ presentation: "fullScreenModal" }} />
+                      <Stack.Screen name="transfer" />
+                      <Stack.Screen name="transfer-new" />
+                      <Stack.Screen name="opname" />
+                      <Stack.Screen name="opname-new" />
+                      <Stack.Screen name="issue" />
+                      <Stack.Screen name="issue-new" />
+                      <Stack.Screen name="movements" />
+                      <Stack.Screen name="branches" />
+                    </Stack>
+                  </ToastProvider>
+                </BranchProvider>
               </AuthProvider>
             </KeyboardProvider>
           </QueryClientProvider>

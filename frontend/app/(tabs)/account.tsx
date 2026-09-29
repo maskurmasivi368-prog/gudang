@@ -31,6 +31,16 @@ export default function AccountScreen() {
   const isAdmin = user?.role === "admin";
   const [addOpen, setAddOpen] = useState(false);
 
+  const ops = [
+    { key: "transfer", label: "Transfer Cabang", icon: "swap-horizontal", route: "/transfer", tint: colors.brandPrimary },
+    { key: "opname", label: "Stok Opname", icon: "clipboard-list-outline", route: "/opname", tint: colors.info },
+    { key: "issue", label: "Barang Keluar", icon: "package-up", route: "/issue", tint: colors.warning },
+    { key: "movements", label: "Laporan Stok", icon: "history", route: "/movements", tint: colors.success },
+    ...(isAdmin
+      ? [{ key: "branches", label: "Kelola Cabang", icon: "warehouse", route: "/branches", tint: colors.brandSecondary }]
+      : []),
+  ];
+
   const staffQuery = useQuery({
     queryKey: ["staff"],
     queryFn: () => api.get<User[]>("/staff"),
@@ -45,7 +55,7 @@ export default function AccountScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]}>
-        <Text style={styles.title}>AKUN</Text>
+        <Text style={styles.title}>MENU</Text>
 
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
@@ -57,6 +67,25 @@ export default function AccountScreen() {
             <View style={styles.roleBadge}>
               <Text style={styles.roleText}>{isAdmin ? "ADMIN" : "STAF GUDANG"}</Text>
             </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Operasi Gudang</Text>
+          <View style={styles.opsGrid}>
+            {ops.map((op) => (
+              <Pressable
+                key={op.route}
+                style={styles.opCard}
+                onPress={() => router.push(op.route as never)}
+                testID={`op-${op.key}`}
+              >
+                <View style={[styles.opIcon, { backgroundColor: op.tint }]}>
+                  <MaterialDesignIcons name={op.icon as never} size={26} color={colors.onBrandPrimary} />
+                </View>
+                <Text style={styles.opLabel}>{op.label}</Text>
+              </Pressable>
+            ))}
           </View>
         </View>
 
@@ -196,6 +225,20 @@ const useStyles = makeStyles((c) => ({
   roleBadge: { alignSelf: "flex-start", backgroundColor: c.brandTertiary, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3, marginTop: spacing.sm },
   roleText: { fontFamily: fonts.bodySemi, fontSize: 11, color: c.onBrandTertiary, letterSpacing: 0.5 },
   section: { gap: spacing.md },
+  opsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  opCard: {
+    width: "47%",
+    flexGrow: 1,
+    backgroundColor: c.surfaceSecondary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: c.border,
+    padding: spacing.md,
+    gap: spacing.sm,
+    alignItems: "flex-start",
+  },
+  opIcon: { width: 48, height: 48, borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
+  opLabel: { fontFamily: fonts.bodySemi, fontSize: 15, color: c.onSurface },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { fontFamily: fonts.displaySemi, fontSize: 20, color: c.onSurface },
   addBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: c.brandPrimary, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },

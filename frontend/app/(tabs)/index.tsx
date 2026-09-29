@@ -8,7 +8,6 @@ import {
   Modal,
   StyleSheet,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { Image } from "expo-image";
@@ -20,7 +19,10 @@ import * as Haptics from "expo-haptics";
 
 import { api, ApiError, Supplier, Product } from "@/src/api";
 import { useToast } from "@/src/toast";
+import { useBranch } from "@/src/branch";
 import { Button } from "@/src/ui";
+import { ScanInput } from "@/src/components/scan-input";
+import { BranchPicker } from "@/src/components/branch-picker";
 import { scanBus } from "@/src/scanBus";
 import { makeStyles, useTheme, spacing, radius, fonts } from "@/src/theme";
 
@@ -36,6 +38,7 @@ export default function ReceiveScreen() {
   const toast = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { branches, current, setCurrentId } = useBranch();
 
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [items, setItems] = useState<CartItem[]>([]);
@@ -43,6 +46,7 @@ export default function ReceiveScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const [supplierSheet, setSupplierSheet] = useState(false);
+  const [branchPicker, setBranchPicker] = useState(false);
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
 
@@ -148,6 +152,7 @@ export default function ReceiveScreen() {
     try {
       await api.post("/receipts", {
         supplier_id: supplier.id,
+        branch_id: current?.id,
         items: clean.map((i) => ({ barcode: i.barcode, name: i.name, qty: i.qty })),
       });
       toast.show("Terkirim ke audit admin", "success");
@@ -198,8 +203,17 @@ export default function ReceiveScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>TERIMA BARANG</Text>
-        <Text style={styles.subtitle}>Scan atau input barcode</Text>
+        <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>TERIMA BARANG</Text>
+            <Text style={styles.subtitle}>Scan atau input barcode</Text>
+          </View>
+          <Pressable style={styles.branchChip} onPress={() => setBranchPicker(true)} testID="branch-chip">
+            <MaterialDesignIcons name="warehouse" size={16} color={colors.brandPrimary} />
+            <Text style={styles.branchChipText} numberOfLines={1}>{current?.name ?? "Cabang"}</Text>
+            <MaterialDesignIcons name="chevron-down" size={16} color={colors.muted} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Supplier + barcode controls */}
@@ -216,32 +230,12 @@ export default function ReceiveScreen() {
           <MaterialDesignIcons name="chevron-down" size={22} color={colors.muted} />
         </Pressable>
 
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View style={styles.barcodeRow}>
-            <View style={styles.barcodeInputWrap}>
-              <MaterialDesignIcons name="barcode" size={22} color={colors.muted} />
-              <TextInput
-                value={barcode}
-                onChangeText={setBarcode}
-                onSubmitEditing={onManualSubmit}
-                placeholder="Ketik / scan barcode"
-                placeholderTextColor={colors.muted}
-                autoCapitalize="none"
-                returnKeyType="done"
-                style={styles.barcodeInput}
-                testID="barcode-input"
-              />
-              {barcode.length > 0 && (
-                <Pressable onPress={onManualSubmit} testID="barcode-add-button">
-                  <MaterialDesignIcons name="plus-circle" size={26} color={colors.brandPrimary} />
-                </Pressable>
-              )}
-            </View>
-            <Pressable style={styles.camBtn} onPress={() => router.push("/scan")} testID="open-camera-button">
-              <MaterialDesignIcons name="camera" size={26} color={colors.onBrandPrimary} />
-            </Pressable>
-          </View>
-        </KeyboardAvoidingView>
+        <ScanInput
+          value={barcode}
+          onChangeText={setBarcode}
+          onSubmit={onManualSubmit}
+          onCamera={() => router.push("/scan")}
+        />
       </View>
 
       {/* Cart */}
@@ -317,6 +311,18 @@ export default function ReceiveScreen() {
           </View>
         </View>
       </Modal>
+
+      <BranchPicker
+        visible={branchPicker}
+        branches={branches}
+        currentId={current?.id}
+        title="Terima ke Cabang"
+        onSelect={(b) => {
+          setCurrentId(b.id);
+          setBranchPicker(false);
+        }}
+        onClose={() => setBranchPicker(false)}
+      />
     </View>
   );
 }
@@ -432,6 +438,20 @@ function SupplierSheet({
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  headerRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  branchChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    maxWidth: 150,
+    backgroundColor: c.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: c.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  branchChipText: { flexShrink: 1, fontFamily: fonts.bodyMedium, fontSize: 13, color: c.onSurface },
   title: { fontFamily: fonts.display, fontSize: 30, color: c.onSurface, letterSpacing: 0.5 },
   subtitle: { fontFamily: fonts.body, fontSize: 13, color: c.muted },
   controls: { paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.md },

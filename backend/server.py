@@ -121,6 +121,7 @@ class ProductOut(BaseModel):
     stock: int = 0
     cost: float = 0.0
     price: float = 0.0
+    branch_stock: Optional[int] = None
 
 
 class ProductCreate(BaseModel):
@@ -137,6 +138,7 @@ class ReceiptItemIn(BaseModel):
 
 class ReceiptCreate(BaseModel):
     supplier_id: str
+    branch_id: Optional[str] = None
     items: List[ReceiptItemIn]
 
 
@@ -286,25 +288,32 @@ def product_out(p: dict) -> ProductOut:
 
 
 @api.get("/products", response_model=List[ProductOut])
-async def list_products(u: dict = Depends(current_user), q: Optional[str] = Query(None)):
+async def list_products(u: dict = Depends(current_user), q: Optional[str] = Query(None), branch_id: Optional[str] = Query(None)):
     query = {"deleted_at": None}
     if q:
         query["$or"] = [
             {"name": {"$regex": q, "$options": "i"}},
             {"barcode": {"$regex": q, "$options": "i"}},
         ]
+    smap = await branch_stock_map(branch_id) if branch_id else None
     out = []
     async for p in db.products.find(query).sort("name", 1).limit(500):
-        out.append(product_out(p))
+        po = product_out(p)
+        if smap is not None:
+            po.branch_stock = smap.get(p["id"], 0)
+        out.append(po)
     return out
 
 
 @api.get("/products/barcode/{barcode}", response_model=ProductOut)
-async def get_by_barcode(barcode: str, u: dict = Depends(current_user)):
+async def get_by_barcode(barcode: str, u: dict = Depends(current_user), branch_id: Optional[str] = Query(None)):
     p = await db.products.find_one({"barcode": barcode, "deleted_at": None})
     if not p:
         raise HTTPException(404, "Produk tidak ditemukan")
-    return product_out(p)
+    po = product_out(p)
+    if branch_id:
+        po.branch_stock = await get_branch_stock(p["id"], branch_id)
+    return po
 
 
 @api.get("/products/barcode/{barcode}/last-cost")
@@ -351,6 +360,8 @@ def receipt_out(r: dict) -> dict:
         "id": r["id"],
         "supplier_id": r["supplier_id"],
         "supplier_name": r["supplier_name"],
+        "branch_id": r.get("branch_id", ""),
+        "branch_name": r.get("branch_name", ""),
         "status": r["status"],
         "items": r["items"],
         "created_by_name": r.get("created_by_name", ""),
@@ -370,6 +381,7 @@ async def create_receipt(body: ReceiptCreate, u: dict = Depends(current_user)):
         raise HTTPException(404, "Supplier tidak ditemukan")
     if not body.items:
         raise HTTPException(422, "Belum ada item yang di-scan")
+    branch = await resolve_branch(body.branch_id)
 
     items = []
     for it in body.items:
@@ -404,6 +416,8 @@ async def create_receipt(body: ReceiptCreate, u: dict = Depends(current_user)):
         "id": new_id(),
         "supplier_id": supplier["id"],
         "supplier_name": supplier["name"],
+        "branch_id": branch["id"],
+        "branch_name": branch["name"],
         "status": "pending_audit",
         "items": items,
         "created_by": u["id"],
@@ -457,10 +471,16 @@ async def approve_receipt(receipt_id: str, body: ApproveBody, u: dict = Depends(
         total_cost += line_total
         it["unit_cost"] = unit_cost
         updated_items.append(it)
-        # sync to POS: increment stock, update last cost
+        # sync to POS: update last cost + increment branch stock via ledger
         await db.products.update_one(
             {"id": it["product_id"]},
-            {"$inc": {"stock": it["qty"]}, "$set": {"cost": unit_cost, "updated_at": now_utc()}},
+            {"$set": {"cost": unit_cost, "updated_at": now_utc()}},
+        )
+        await record_movement(
+            product_id=it["product_id"], barcode=it["barcode"], name=it["name"],
+            branch_id=r.get("branch_id", ""), branch_name=r.get("branch_name", ""),
+            delta=it["qty"], mtype="receive", ref_id=r["id"], ref_type="receipt",
+            note=f"Terima dari {r['supplier_name']}", user=u,
         )
         # record purchase history
         await db.purchase_history.insert_one({
@@ -508,6 +528,404 @@ async def pos_inventory(u: dict = Depends(current_user)):
     return {"count": len(out), "items": out}
 
 
+# ---------------------------------------------------------------------------
+# Branches + stock ledger (per-branch stock, movements)
+# ---------------------------------------------------------------------------
+class BranchCreate(BaseModel):
+    name: str
+    code: Optional[str] = ""
+    address: Optional[str] = ""
+
+
+class BranchPatch(BaseModel):
+    name: Optional[str] = None
+    active: Optional[bool] = None
+
+
+class TransferItemIn(BaseModel):
+    barcode: str
+    name: str
+    qty: int = 1
+
+
+class TransferCreate(BaseModel):
+    from_branch_id: str
+    to_branch_id: str
+    items: List[TransferItemIn]
+    note: Optional[str] = ""
+
+
+class OpnameItemIn(BaseModel):
+    barcode: str
+    name: str
+    physical_qty: int = 0
+
+
+class OpnameCreate(BaseModel):
+    branch_id: str
+    items: List[OpnameItemIn]
+    note: Optional[str] = ""
+
+
+class IssueItemIn(BaseModel):
+    barcode: str
+    name: str
+    qty: int = 1
+
+
+class IssueCreate(BaseModel):
+    branch_id: str
+    reason: str
+    items: List[IssueItemIn]
+    note: Optional[str] = ""
+
+
+def branch_out(b: dict) -> dict:
+    return {
+        "id": b["id"],
+        "name": b["name"],
+        "code": b.get("code", ""),
+        "address": b.get("address", ""),
+        "is_main": b.get("is_main", False),
+        "active": b.get("active", True),
+    }
+
+
+async def get_main_branch() -> Optional[dict]:
+    return (
+        await db.branches.find_one({"is_main": True, "deleted_at": None})
+        or await db.branches.find_one({"deleted_at": None})
+    )
+
+
+async def resolve_branch(branch_id: Optional[str]) -> dict:
+    if branch_id:
+        b = await db.branches.find_one({"id": branch_id, "deleted_at": None})
+        if not b:
+            raise HTTPException(404, "Cabang tidak ditemukan")
+        return b
+    b = await get_main_branch()
+    if not b:
+        raise HTTPException(400, "Belum ada cabang")
+    return b
+
+
+async def resolve_product(barcode: str, name: str) -> dict:
+    p = await db.products.find_one({"barcode": barcode, "deleted_at": None})
+    if p:
+        return p
+    p = {
+        "id": new_id(), "barcode": barcode, "name": (name or barcode).strip(),
+        "stock": 0, "cost": 0.0, "price": 0.0, "deleted_at": None,
+        "created_at": now_utc(), "updated_at": now_utc(),
+    }
+    await db.products.insert_one(p)
+    return p
+
+
+async def get_branch_stock(product_id: str, branch_id: str) -> int:
+    lvl = await db.stock_levels.find_one({"product_id": product_id, "branch_id": branch_id})
+    return lvl.get("stock", 0) if lvl else 0
+
+
+async def branch_stock_map(branch_id: str) -> dict:
+    out = {}
+    async for lvl in db.stock_levels.find({"branch_id": branch_id}):
+        out[lvl["product_id"]] = lvl.get("stock", 0)
+    return out
+
+
+async def record_movement(*, product_id, barcode, name, branch_id, branch_name,
+                          delta, mtype, ref_id=None, ref_type=None, note="", user=None):
+    await db.stock_levels.update_one(
+        {"product_id": product_id, "branch_id": branch_id},
+        {"$inc": {"stock": delta},
+         "$setOnInsert": {"id": new_id(), "product_id": product_id, "branch_id": branch_id}},
+        upsert=True,
+    )
+    await db.products.update_one(
+        {"id": product_id}, {"$inc": {"stock": delta}, "$set": {"updated_at": now_utc()}}
+    )
+    await db.movements.insert_one({
+        "id": new_id(), "product_id": product_id, "barcode": barcode, "name": name,
+        "branch_id": branch_id, "branch_name": branch_name, "qty": delta, "type": mtype,
+        "ref_id": ref_id, "ref_type": ref_type, "note": note,
+        "user_name": (user or {}).get("name", "") if isinstance(user, dict) else "",
+        "created_at": now_utc(),
+    })
+
+
+@api.get("/branches")
+async def list_branches(u: dict = Depends(current_user)):
+    out = []
+    async for b in db.branches.find({"deleted_at": None}).sort("name", 1):
+        out.append(branch_out(b))
+    return out
+
+
+@api.post("/branches", status_code=201)
+async def create_branch(body: BranchCreate, _: dict = Depends(admin_only)):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(422, "Nama cabang wajib diisi")
+    doc = {
+        "id": new_id(), "name": name, "code": (body.code or "").strip(),
+        "address": (body.address or "").strip(), "is_main": False, "active": True,
+        "deleted_at": None, "created_at": now_utc(),
+    }
+    await db.branches.insert_one(doc)
+    return branch_out(doc)
+
+
+@api.patch("/branches/{branch_id}")
+async def patch_branch(branch_id: str, body: BranchPatch, _: dict = Depends(admin_only)):
+    b = await db.branches.find_one({"id": branch_id, "deleted_at": None})
+    if not b:
+        raise HTTPException(404, "Cabang tidak ditemukan")
+    upd = {}
+    if body.name is not None:
+        upd["name"] = body.name.strip()
+    if body.active is not None:
+        upd["active"] = body.active
+    if upd:
+        await db.branches.update_one({"id": branch_id}, {"$set": upd})
+    b = await db.branches.find_one({"id": branch_id})
+    return branch_out(b)
+
+
+# ---- Transfers -------------------------------------------------------------
+def transfer_out(t: dict) -> dict:
+    return {
+        "id": t["id"],
+        "from_branch_id": t["from_branch_id"], "from_branch_name": t["from_branch_name"],
+        "to_branch_id": t["to_branch_id"], "to_branch_name": t["to_branch_name"],
+        "status": t["status"], "items": t["items"], "note": t.get("note", ""),
+        "total_qty": sum(i.get("qty", 0) for i in t["items"]),
+        "created_by_name": t.get("created_by_name", ""),
+        "created_at": t["created_at"].isoformat() if isinstance(t.get("created_at"), datetime) else t.get("created_at"),
+        "received_at": t["received_at"].isoformat() if isinstance(t.get("received_at"), datetime) else t.get("received_at"),
+        "received_by_name": t.get("received_by_name", ""),
+    }
+
+
+@api.post("/transfers", status_code=201)
+async def create_transfer(body: TransferCreate, u: dict = Depends(current_user)):
+    if body.from_branch_id == body.to_branch_id:
+        raise HTTPException(422, "Cabang asal dan tujuan harus berbeda")
+    src = await resolve_branch(body.from_branch_id)
+    dst = await resolve_branch(body.to_branch_id)
+    if not body.items:
+        raise HTTPException(422, "Belum ada item")
+
+    items = []
+    tid = new_id()
+    for it in body.items:
+        p = await resolve_product(it.barcode, it.name)
+        items.append({"product_id": p["id"], "barcode": it.barcode, "name": p["name"], "qty": it.qty})
+        # deduct from source immediately
+        await record_movement(
+            product_id=p["id"], barcode=it.barcode, name=p["name"],
+            branch_id=src["id"], branch_name=src["name"], delta=-it.qty,
+            mtype="transfer_out", ref_id=tid, ref_type="transfer",
+            note=f"Transfer ke {dst['name']}", user=u,
+        )
+    doc = {
+        "id": tid, "from_branch_id": src["id"], "from_branch_name": src["name"],
+        "to_branch_id": dst["id"], "to_branch_name": dst["name"], "status": "pending",
+        "items": items, "note": body.note or "", "created_by": u["id"],
+        "created_by_name": u.get("name", u["email"]), "created_at": now_utc(),
+        "received_at": None, "received_by": None, "received_by_name": None,
+    }
+    await db.transfers.insert_one(doc)
+    return transfer_out(doc)
+
+
+@api.get("/transfers")
+async def list_transfers(u: dict = Depends(current_user), status: Optional[str] = Query(None), branch_id: Optional[str] = Query(None)):
+    query = {}
+    if status:
+        query["status"] = status
+    if branch_id:
+        query["$or"] = [{"from_branch_id": branch_id}, {"to_branch_id": branch_id}]
+    out = []
+    async for t in db.transfers.find(query).sort("created_at", -1).limit(200):
+        out.append(transfer_out(t))
+    return out
+
+
+@api.post("/transfers/{transfer_id}/receive")
+async def receive_transfer(transfer_id: str, u: dict = Depends(current_user)):
+    t = await db.transfers.find_one({"id": transfer_id})
+    if not t:
+        raise HTTPException(404, "Transfer tidak ditemukan")
+    if t["status"] != "pending":
+        raise HTTPException(400, "Transfer sudah diproses")
+    for it in t["items"]:
+        await record_movement(
+            product_id=it["product_id"], barcode=it["barcode"], name=it["name"],
+            branch_id=t["to_branch_id"], branch_name=t["to_branch_name"], delta=it["qty"],
+            mtype="transfer_in", ref_id=t["id"], ref_type="transfer",
+            note=f"Terima dari {t['from_branch_name']}", user=u,
+        )
+    await db.transfers.update_one({"id": transfer_id}, {"$set": {
+        "status": "received", "received_at": now_utc(),
+        "received_by": u["id"], "received_by_name": u.get("name", u["email"]),
+    }})
+    return transfer_out(await db.transfers.find_one({"id": transfer_id}))
+
+
+@api.post("/transfers/{transfer_id}/cancel")
+async def cancel_transfer(transfer_id: str, u: dict = Depends(current_user)):
+    t = await db.transfers.find_one({"id": transfer_id})
+    if not t:
+        raise HTTPException(404, "Transfer tidak ditemukan")
+    if t["status"] != "pending":
+        raise HTTPException(400, "Transfer sudah diproses")
+    for it in t["items"]:
+        await record_movement(
+            product_id=it["product_id"], barcode=it["barcode"], name=it["name"],
+            branch_id=t["from_branch_id"], branch_name=t["from_branch_name"], delta=it["qty"],
+            mtype="transfer_in", ref_id=t["id"], ref_type="transfer",
+            note="Batal transfer (stok dikembalikan)", user=u,
+        )
+    await db.transfers.update_one({"id": transfer_id}, {"$set": {"status": "cancelled"}})
+    return transfer_out(await db.transfers.find_one({"id": transfer_id}))
+
+
+# ---- Opname (stock count) --------------------------------------------------
+def opname_out(o: dict) -> dict:
+    return {
+        "id": o["id"], "branch_id": o["branch_id"], "branch_name": o["branch_name"],
+        "status": o["status"], "items": o["items"], "note": o.get("note", ""),
+        "total_diff": sum(i.get("diff", 0) for i in o["items"]),
+        "created_by_name": o.get("created_by_name", ""),
+        "created_at": o["created_at"].isoformat() if isinstance(o.get("created_at"), datetime) else o.get("created_at"),
+    }
+
+
+@api.get("/opnames/snapshot")
+async def opname_snapshot(u: dict = Depends(current_user), branch_id: str = Query(...)):
+    """Current system stock per product for a branch, to prefill an opname."""
+    await resolve_branch(branch_id)
+    smap = await branch_stock_map(branch_id)
+    out = []
+    async for p in db.products.find({"deleted_at": None}).sort("name", 1).limit(1000):
+        out.append({"barcode": p["barcode"], "name": p["name"], "system_qty": smap.get(p["id"], 0)})
+    return {"branch_id": branch_id, "items": out}
+
+
+@api.post("/opnames", status_code=201)
+async def create_opname(body: OpnameCreate, u: dict = Depends(current_user)):
+    branch = await resolve_branch(body.branch_id)
+    if not body.items:
+        raise HTTPException(422, "Belum ada item")
+    oid = new_id()
+    items = []
+    for it in body.items:
+        p = await resolve_product(it.barcode, it.name)
+        system_qty = await get_branch_stock(p["id"], branch["id"])
+        diff = it.physical_qty - system_qty
+        items.append({
+            "product_id": p["id"], "barcode": it.barcode, "name": p["name"],
+            "system_qty": system_qty, "physical_qty": it.physical_qty, "diff": diff,
+        })
+        if diff != 0:
+            await record_movement(
+                product_id=p["id"], barcode=it.barcode, name=p["name"],
+                branch_id=branch["id"], branch_name=branch["name"], delta=diff,
+                mtype="opname", ref_id=oid, ref_type="opname",
+                note="Penyesuaian opname", user=u,
+            )
+    doc = {
+        "id": oid, "branch_id": branch["id"], "branch_name": branch["name"],
+        "status": "completed", "items": items, "note": body.note or "",
+        "created_by": u["id"], "created_by_name": u.get("name", u["email"]),
+        "created_at": now_utc(),
+    }
+    await db.opnames.insert_one(doc)
+    return opname_out(doc)
+
+
+@api.get("/opnames")
+async def list_opnames(u: dict = Depends(current_user), branch_id: Optional[str] = Query(None)):
+    query = {}
+    if branch_id:
+        query["branch_id"] = branch_id
+    out = []
+    async for o in db.opnames.find(query).sort("created_at", -1).limit(200):
+        out.append(opname_out(o))
+    return out
+
+
+# ---- Issues (barang keluar) ------------------------------------------------
+def issue_out(i: dict) -> dict:
+    return {
+        "id": i["id"], "branch_id": i["branch_id"], "branch_name": i["branch_name"],
+        "reason": i.get("reason", ""), "items": i["items"], "note": i.get("note", ""),
+        "total_qty": sum(x.get("qty", 0) for x in i["items"]),
+        "created_by_name": i.get("created_by_name", ""),
+        "created_at": i["created_at"].isoformat() if isinstance(i.get("created_at"), datetime) else i.get("created_at"),
+    }
+
+
+@api.post("/issues", status_code=201)
+async def create_issue(body: IssueCreate, u: dict = Depends(current_user)):
+    branch = await resolve_branch(body.branch_id)
+    if not body.items:
+        raise HTTPException(422, "Belum ada item")
+    iid = new_id()
+    items = []
+    for it in body.items:
+        p = await resolve_product(it.barcode, it.name)
+        items.append({"product_id": p["id"], "barcode": it.barcode, "name": p["name"], "qty": it.qty})
+        await record_movement(
+            product_id=p["id"], barcode=it.barcode, name=p["name"],
+            branch_id=branch["id"], branch_name=branch["name"], delta=-it.qty,
+            mtype="issue", ref_id=iid, ref_type="issue",
+            note=body.reason, user=u,
+        )
+    doc = {
+        "id": iid, "branch_id": branch["id"], "branch_name": branch["name"],
+        "reason": body.reason, "items": items, "note": body.note or "",
+        "created_by": u["id"], "created_by_name": u.get("name", u["email"]),
+        "created_at": now_utc(),
+    }
+    await db.issues.insert_one(doc)
+    return issue_out(doc)
+
+
+@api.get("/issues")
+async def list_issues(u: dict = Depends(current_user), branch_id: Optional[str] = Query(None)):
+    query = {}
+    if branch_id:
+        query["branch_id"] = branch_id
+    out = []
+    async for i in db.issues.find(query).sort("created_at", -1).limit(200):
+        out.append(issue_out(i))
+    return out
+
+
+# ---- Movement ledger report ------------------------------------------------
+@api.get("/movements")
+async def list_movements(u: dict = Depends(current_user), branch_id: Optional[str] = Query(None),
+                         mtype: Optional[str] = Query(None), limit: int = Query(100)):
+    query = {}
+    if branch_id:
+        query["branch_id"] = branch_id
+    if mtype:
+        query["type"] = mtype
+    out = []
+    async for m in db.movements.find(query).sort("created_at", -1).limit(min(limit, 500)):
+        out.append({
+            "id": m["id"], "barcode": m["barcode"], "name": m["name"],
+            "branch_id": m["branch_id"], "branch_name": m.get("branch_name", ""),
+            "qty": m["qty"], "type": m["type"], "note": m.get("note", ""),
+            "user_name": m.get("user_name", ""),
+            "created_at": m["created_at"].isoformat() if isinstance(m.get("created_at"), datetime) else m.get("created_at"),
+        })
+    return out
+
+
 @api.get("/")
 async def root():
     return {"message": "Gudang PDA API"}
@@ -520,6 +938,8 @@ async def root():
 async def seed():
     await db.users.create_index("email", unique=True)
     await db.products.create_index("barcode")
+    await db.stock_levels.create_index([("product_id", 1), ("branch_id", 1)])
+    await db.movements.create_index([("branch_id", 1), ("created_at", -1)])
 
     admin_email = os.environ["ADMIN_EMAIL"].lower()
     if not await db.users.find_one({"email": admin_email}):
@@ -540,6 +960,16 @@ async def seed():
                 "id": new_id(), "name": nm, "phone": ph, "deleted_at": None, "created_at": now_utc()
             })
 
+    if await db.branches.count_documents({}) == 0:
+        await db.branches.insert_one({
+            "id": new_id(), "name": "Gudang Pusat", "code": "PST", "address": "",
+            "is_main": True, "active": True, "deleted_at": None, "created_at": now_utc(),
+        })
+        await db.branches.insert_one({
+            "id": new_id(), "name": "Cabang Selatan", "code": "CBS", "address": "",
+            "is_main": False, "active": True, "deleted_at": None, "created_at": now_utc(),
+        })
+
     if await db.products.count_documents({}) == 0:
         demo = [
             ("8991002101234", "Indomie Goreng", 25, 2500, 3000),
@@ -553,6 +983,16 @@ async def seed():
                 "cost": float(cost), "price": float(price), "deleted_at": None,
                 "created_at": now_utc(), "updated_at": now_utc(),
             })
+
+    # Migrate: seed per-branch stock into the main branch from product totals.
+    if await db.stock_levels.count_documents({}) == 0:
+        main = await db.branches.find_one({"is_main": True, "deleted_at": None})
+        if main:
+            async for p in db.products.find({"deleted_at": None}):
+                await db.stock_levels.insert_one({
+                    "id": new_id(), "product_id": p["id"],
+                    "branch_id": main["id"], "stock": p.get("stock", 0),
+                })
 
 
 app.include_router(api)

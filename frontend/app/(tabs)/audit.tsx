@@ -54,7 +54,7 @@ export default function AuditScreen() {
         <View style={styles.cardTop}>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardSupplier} numberOfLines={1}>{item.supplier_name}</Text>
-            <Text style={styles.cardMeta}>oleh {item.created_by_name}</Text>
+            <Text style={styles.cardMeta}>{item.branch_name ? `${item.branch_name} • ` : ""}oleh {item.created_by_name}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: approved ? colors.brandTertiary : colors.surfaceTertiary }]}>
             <MaterialDesignIcons
