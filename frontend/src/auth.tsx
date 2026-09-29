@@ -1,9 +1,18 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { storage } from "@/src/utils/storage";
-import { api, TOKEN_KEY, User } from "@/src/api";
+import {
+  PosSession,
+  PosUser,
+  loadSession,
+  saveSession,
+  clearSession,
+  posLogin,
+  me,
+  onUnauthorized,
+} from "@/src/pos";
 
 interface AuthState {
-  user: User | null;
+  session: PosSession | null;
+  user: PosUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -12,20 +21,37 @@ interface AuthState {
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<PosSession | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const signOut = useCallback(async () => {
+    await clearSession();
+    setSession(null);
+  }, []);
+
+  // 401 anywhere in the adapter ends the local session.
+  useEffect(() => {
+    onUnauthorized(() => setSession(null));
+  }, []);
+
   const bootstrap = useCallback(async () => {
-    const token = await storage.secureGet<string>(TOKEN_KEY, "");
-    if (!token) {
+    const saved = await loadSession();
+    if (!saved) {
       setLoading(false);
       return;
     }
+    setSession(saved);
+    // Verify identity fresh; failures fall back to the saved session when the
+    // network is down, or force logout on 401 (adapter already cleared it).
     try {
-      const me = await api.get<User>("/auth/me");
-      setUser(me);
-    } catch {
-      await storage.secureRemove(TOKEN_KEY);
+      const fresh = await me();
+      const next = { ...saved, user: fresh };
+      await saveSession(next);
+      setSession(next);
+    } catch (e) {
+      if ((e as { status?: number }).status === 401) {
+        setSession(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -36,21 +62,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [bootstrap]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{ access_token: string; user: User }>("/auth/login", {
-      email,
-      password,
-    });
-    await storage.secureSet(TOKEN_KEY, res.access_token);
-    setUser(res.user);
-  }, []);
-
-  const signOut = useCallback(async () => {
-    await storage.secureRemove(TOKEN_KEY);
-    setUser(null);
+    const res = await posLogin(email.trim(), password);
+    const u = res.user;
+    if (!u.active || !u.store_id || (u.role !== "warehouse" && u.role !== "admin")) {
+      throw new Error("Akun ini tidak berhak memakai aplikasi PDA (butuh peran gudang/admin dan cabang)");
+    }
+    const sess: PosSession = { access_token: res.access_token, user: u };
+    await saveSession(sess);
+    setSession(sess);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

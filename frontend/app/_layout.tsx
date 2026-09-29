@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { LogBox } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -11,12 +11,27 @@ import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-
 
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { queryClient } from "@/src/query-client";
-import { AuthProvider } from "@/src/auth";
-import { BranchProvider } from "@/src/branch";
+import { AuthProvider, useAuth } from "@/src/auth";
 import { ToastProvider } from "@/src/toast";
 
 LogBox.ignoreAllLogs(true);
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Sends the user to /login whenever the POS session disappears mid-use (401).
+function AuthGate() {
+  const { session, loading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (loading) return;
+    const onLogin = segments[0] === "login";
+    if (!session && !onLogin) router.replace("/login");
+    else if (session && onLogin) router.replace("/(tabs)");
+  }, [session, loading, segments, router]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -43,24 +58,19 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <KeyboardProvider>
               <AuthProvider>
-                <BranchProvider>
-                  <ToastProvider>
-                    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#121212" } }}>
-                      <Stack.Screen name="index" />
-                      <Stack.Screen name="login" />
-                      <Stack.Screen name="(tabs)" />
-                      <Stack.Screen name="scan" options={{ presentation: "fullScreenModal" }} />
-                      <Stack.Screen name="transfer" />
-                      <Stack.Screen name="transfer-new" />
-                      <Stack.Screen name="opname" />
-                      <Stack.Screen name="opname-new" />
-                      <Stack.Screen name="issue" />
-                      <Stack.Screen name="issue-new" />
-                      <Stack.Screen name="movements" />
-                      <Stack.Screen name="branches" />
-                    </Stack>
-                  </ToastProvider>
-                </BranchProvider>
+                <ToastProvider>
+                  <AuthGate />
+                  <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#121212" } }}>
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="login" />
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen name="scan" options={{ presentation: "fullScreenModal" }} />
+                    <Stack.Screen name="batch-new" />
+                    <Stack.Screen name="batch/[id]" />
+                    <Stack.Screen name="transfer-new" />
+                    <Stack.Screen name="transfer/[id]" />
+                  </Stack>
+                </ToastProvider>
               </AuthProvider>
             </KeyboardProvider>
           </QueryClientProvider>

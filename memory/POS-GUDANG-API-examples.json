@@ -1,0 +1,368 @@
+{
+  "notice": "Seluruh ID, barcode, akun dan token adalah contoh fiktif. Jangan kirim contoh mutasi ke produksi. Respons contoh dapat berupa subset; baca OpenAPI dan panduan.",
+  "ids": {
+    "sm3": "111111111111111111111111",
+    "sm6": "222222222222222222222222",
+    "user": "333333333333333333333333",
+    "supplier": "444444444444444444444444",
+    "product": "555555555555555555555555",
+    "batch": "666666666666666666666666",
+    "transfer": "777777777777777777777777",
+    "note": "888888888888888888888888"
+  },
+  "requests": {
+    "login": {
+      "email": "petugas@example.com",
+      "password": "GANTI_DENGAN_PASSWORD_AKUN_SENDIRI"
+    },
+    "createBatch": {
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "supplier_id": "444444444444444444444444",
+      "supplier_name": "Supplier Contoh",
+      "reference": "SJ-CONTOH-001",
+      "note": "Penerimaan PDA"
+    },
+    "saveBatch": {
+      "request_id": "00000000-0000-4000-8000-000000000002",
+      "revision": 0,
+      "reference": "SJ-CONTOH-001",
+      "note": "Penerimaan PDA",
+      "items": [
+        {
+          "product_id": "555555555555555555555555",
+          "quantity": 4,
+          "unit": "BAL",
+          "pieces": 12,
+          "condition": "SESUAI",
+          "variant": null
+        }
+      ]
+    },
+    "auditBatch": {
+      "revision": 1,
+      "reviewed": true
+    },
+    "cancelBatch": {
+      "revision": 1
+    },
+    "createTransfer": {
+      "request_id": "00000000-0000-4000-8000-000000000003",
+      "revision": 0,
+      "to_store": "222222222222222222222222",
+      "note": "Kirim dua BAL",
+      "items": [
+        {
+          "product_id": "555555555555555555555555",
+          "qty": 2,
+          "unit": "BAL",
+          "pieces": 12
+        }
+      ]
+    },
+    "editTransfer": {
+      "request_id": "00000000-0000-4000-8000-000000000004",
+      "revision": 1,
+      "to_store": "222222222222222222222222",
+      "note": "Jumlah sudah diperiksa",
+      "items": [
+        {
+          "product_id": "555555555555555555555555",
+          "qty": 2,
+          "unit": "BAL",
+          "pieces": 12
+        }
+      ]
+    },
+    "dispatch": {
+      "revision": 2,
+      "note": "Barang berangkat",
+      "confirmed": true
+    },
+    "check": {
+      "revision": 3,
+      "note": "Satu BAL belum tiba",
+      "confirmed": true,
+      "items": [
+        {
+          "product_id": "555555555555555555555555",
+          "qty": 1,
+          "checked": true
+        }
+      ]
+    },
+    "post": {
+      "revision": 4,
+      "note": "Posting hasil cek",
+      "confirmed": true
+    },
+    "cancelTransfer": {
+      "revision": 1,
+      "note": "Pengiriman dibatalkan",
+      "confirmed": true
+    },
+    "scanNote": {
+      "request_id": "00000000-0000-4000-8000-000000000005",
+      "context_id": "00000000-0000-4000-8000-000000000006",
+      "kind": "warehouse",
+      "barcode": "CONTOH-BELUM-ADA",
+      "document_id": "666666666666666666666666",
+      "target_store": null
+    },
+    "reviewNote": {
+      "revision": 1,
+      "note": "Admin memeriksa kemasan produk"
+    }
+  },
+  "responses": {
+    "login": {
+      "access_token": "EXAMPLE_TOKEN_NOT_VALID",
+      "token_type": "bearer",
+      "user": {
+        "id": "333333333333333333333333",
+        "email": "petugas@example.com",
+        "name": "Petugas SM3 Contoh",
+        "role": "warehouse",
+        "active": true,
+        "store_id": "111111111111111111111111",
+        "cashier_duty": "payment"
+      }
+    },
+    "me": {
+      "id": "333333333333333333333333",
+      "email": "petugas@example.com",
+      "name": "Petugas SM3 Contoh",
+      "role": "warehouse",
+      "active": true,
+      "store_id": "111111111111111111111111",
+      "cashier_duty": "payment"
+    },
+    "health": {
+      "status": "ok",
+      "database": "mariadb",
+      "api_version": "1"
+    },
+    "stores": [
+      {
+        "id": "111111111111111111111111",
+        "name": "SM3 Contoh",
+        "is_default": true
+      }
+    ],
+    "suppliers": [
+      {
+        "id": "444444444444444444444444",
+        "name": "Supplier Contoh"
+      }
+    ],
+    "scan": {
+      "id": "555555555555555555555555",
+      "name": "KOPI CONTOH",
+      "barcode": "CONTOH-BAL-12",
+      "base_unit": "PCS",
+      "units": [
+        {
+          "name": "PCS",
+          "pieces": 1
+        },
+        {
+          "name": "BAL",
+          "pieces": 12
+        }
+      ],
+      "receiving_packages": [
+        {
+          "name": "BAL",
+          "pieces": 12,
+          "barcode": "CONTOH-BAL-12"
+        }
+      ],
+      "variants": [],
+      "supplier_price": null,
+      "matched_unit": "BAL",
+      "matched_pieces": 12,
+      "matched_variant": null,
+      "stock": 100,
+      "cost": 100,
+      "last_purchase_cost": 100,
+      "supplier_name": "",
+      "supplier_id": null
+    },
+    "warehouseSearch": {
+      "items": [
+        {
+          "id": "555555555555555555555555",
+          "name": "KOPI CONTOH",
+          "barcode": "CONTOH-PCS",
+          "base_unit": "PCS",
+          "units": [
+            {
+              "name": "PCS",
+              "pieces": 1
+            },
+            {
+              "name": "BAL",
+              "pieces": 12
+            }
+          ],
+          "matched_code": "CONTOH-BAL-12"
+        }
+      ],
+      "has_more": false
+    },
+    "createBatch": {
+      "id": "666666666666666666666666",
+      "kind": "batch",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "supplier_id": "444444444444444444444444",
+      "supplier_name": "Supplier Contoh",
+      "reference": "SJ-CONTOH-001",
+      "note": "Penerimaan PDA",
+      "items": [],
+      "state": "draft",
+      "revision": 0,
+      "store_id": "111111111111111111111111",
+      "user_id": "333333333333333333333333",
+      "by": "Petugas SM3 Contoh",
+      "created_at": "2026-09-29T03:00:00+00:00",
+      "updated_at": "2026-09-29T03:00:00+00:00"
+    },
+    "saveBatch": {
+      "id": "666666666666666666666666",
+      "kind": "batch",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "supplier_id": "444444444444444444444444",
+      "supplier_name": "Supplier Contoh",
+      "reference": "SJ-CONTOH-001",
+      "note": "Penerimaan PDA",
+      "items": [
+        {
+          "product_id": "555555555555555555555555",
+          "product_name": "KOPI CONTOH",
+          "barcode": "CONTOH-PCS",
+          "base_unit": "PCS",
+          "units": [
+            {
+              "name": "PCS",
+              "pieces": 1
+            },
+            {
+              "name": "BAL",
+              "pieces": 12
+            }
+          ],
+          "quantity": 4,
+          "unit": "BAL",
+          "pieces": 12,
+          "quantity_base": 48,
+          "cost": null,
+          "variant": null,
+          "condition": "SESUAI",
+          "good_quantity_base": 48,
+          "price_source": null,
+          "price_changed": false
+        }
+      ],
+      "state": "draft",
+      "revision": 1,
+      "store_id": "111111111111111111111111",
+      "user_id": "333333333333333333333333",
+      "by": "Petugas SM3 Contoh",
+      "created_at": "2026-09-29T03:00:00+00:00",
+      "updated_at": "2026-09-29T03:00:00+00:00"
+    },
+    "transferOptions": {
+      "active_store": "111111111111111111111111",
+      "can_edit": true,
+      "can_finance": false,
+      "stores": [
+        {
+          "id": "111111111111111111111111",
+          "name": "SM3 Contoh"
+        },
+        {
+          "id": "222222222222222222222222",
+          "name": "SM6 Contoh"
+        }
+      ]
+    },
+    "transferSearch": [
+      {
+        "id": "555555555555555555555555",
+        "name": "KOPI CONTOH",
+        "stock": 100,
+        "cost": 100,
+        "units": [
+          {
+            "name": "PCS",
+            "pieces": 1
+          },
+          {
+            "name": "BAL",
+            "pieces": 12
+          }
+        ],
+        "matched_unit": "BAL",
+        "exact": true
+      }
+    ],
+    "partialTransfer": {
+      "id": "777777777777777777777777",
+      "kind": "transfer_v2",
+      "request_no": "TRF-20260929-CONTOH0001",
+      "from_store": "111111111111111111111111",
+      "from_store_name": "SM3 Contoh",
+      "to_store": "222222222222222222222222",
+      "to_store_name": "SM6 Contoh",
+      "state": "partial_received",
+      "revision": 5,
+      "note": "Jumlah sudah diperiksa",
+      "created_at": "2026-09-29T03:00:00+00:00",
+      "updated_at": "2026-09-29T04:00:00+00:00",
+      "items": [
+        {
+          "product_id": "555555555555555555555555",
+          "name": "KOPI CONTOH",
+          "base_unit": "PCS",
+          "unit": "BAL",
+          "pieces": 12,
+          "qty": 2,
+          "unit_cost": 1200,
+          "sent_qty": 2,
+          "original_sent_qty": 2,
+          "received_qty": 1
+        }
+      ],
+      "item_count": 1,
+      "pending_receipt": null,
+      "financial_batches": [],
+      "totals": {
+        "original_sent_value": 2400,
+        "draft_value": 2400,
+        "sent_value": 2400,
+        "received_value": 1200,
+        "difference_value": 1200,
+        "final_value": 1200,
+        "recorded_value": 0,
+        "unrecorded_value": 1200
+      }
+    },
+    "scanNote": {
+      "id": "888888888888888888888888",
+      "store_id": "111111111111111111111111",
+      "kind": "warehouse",
+      "context_id": "00000000-0000-4000-8000-000000000006",
+      "document_id": "666666666666666666666666",
+      "reference": "SJ-CONTOH-001",
+      "target_store": null,
+      "target_name": "",
+      "barcode": "CONTOH-BELUM-ADA",
+      "scan_count": 1,
+      "revision": 1,
+      "first_at": "2026-09-29T03:00:00+00:00",
+      "first_by": "Petugas SM3 Contoh",
+      "last_at": "2026-09-29T03:00:00+00:00",
+      "last_by": "Petugas SM3 Contoh",
+      "state": "pending"
+    }
+  }
+}

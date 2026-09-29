@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 4 — MASIVI POS pivot verification. Backend proxy suite (new /app/backend/tests/test_pos_proxy.py): 8/8 pytest pass against the public preview URL. Verified: GET /api/pos-proxy/health returns exactly {\"status\":\"ok\",\"database\":\"mariadb\",\"api_version\":\"1\"}; direct POS health https://sm3.masivi.id/api/v1/health OK; POST /api/pos-proxy/auth/login with wrong creds returns POS's own 401 {\"detail\":\"Email atau password salah\"} end-to-end (proves proxy transport + POS connectivity); bogus Bearer/X-Store-Id on /auth/me and /warehouse/batches return POS 401 (proves auth-header forwarding); query params forwarded. Frontend (mobile viewport 390x844): login screen renders (GUDANG PDA / Terhubung ke POS MASIVI); empty submit shows 'Isi email dan password'; wrong creds show POS error toast 'Email atau password salah' VERBATIM (toast auto-dismisses after 2.6s — first attempt missed it, retest confirmed); user stays on login screen. Network inspection: browser calls ONLY https://pos-inventory-hub-68.preview.emergentagent.com/api/pos-proxy/auth/login — zero direct sm3.masivi.id calls from browser, zero /api/v1/api/v1 duplication (proxy prepends /api/v1 exactly once, server.py:945+958). Auth gate: direct navigation to /(tabs) and /batch-new without session redirects to /login. Static contract compliance (all verified in code): batch save = PUT with FULL items + server revision (batch/[id].tsx:249-262); unknown barcode -> scan-note, never product creation (batch/[id].tsx:151-161, transfer-new.tsx:106-114); transfers follow draft->dispatch->check->post with revision from server (transfer/[id].tsx); FIFO journal reuses same request_id on retry, fatal 4xx dropped+surfaced (journal.ts); NO direct stock mutation and ZERO references to retired local endpoints (grep: no receipts/opname/issues/movements/branches/admin@gudang.com anywhere in app/ or src/); all fetch calls go through src/pos.ts. ESLint: no errors, only minor warnings (unused imports). No deprecated Expo packages (expo-camera ~57 is correct); no SafeAreaView issues. Successful POS login NOT tested — no POS credentials exist per contract.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/pos-proxy/{path}", "issue": "pos_proxy handler uses synchronous `requests` inside an async route (server.py:956) — blocks the event loop during the POS round-trip. Works at PDA scale, but use httpx.AsyncClient for correctness."},
+      {"endpoint": "/api/auth/login + all legacy routes", "issue": "SECURITY/HYGIENE: the 'retired' MongoDB backend is still fully deployed — local login admin@gudang.com/admin123 still returns 200 with a valid JWT, and all legacy CRUD (staff/receipts/transfers/opname/issues/movements/branches/products) plus demo-data seeding remain live (server.py:191-1047). The claim 'backend now only hosts pos-proxy' is inaccurate. Frontend never calls these (verified), but the public surface with default admin credentials should be removed or locked down."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "global (RN-Web)", "issues": ["Console warning 'props.pointerEvents is deprecated' persists (cosmetic carryover from iterations 1-3)."]},
+      {"screen": "account", "issues": ["'Koneksi POS' card displays POS_BASE (https://sm3.masivi.id/api/v1) even on web where traffic actually goes via /api/pos-proxy — informative but slightly misleading for web debugging. Trivial."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pos_proxy.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(HIGH hygiene) Remove or disable the retired MongoDB routes and seed in /app/backend/server.py (keep ONLY /api/pos-proxy + root). At minimum delete/rotate the default admin@gudang.com/admin123 account — it is publicly loginable today.",
+    "(LOW) Replace synchronous `requests` with httpx.AsyncClient in the pos_proxy handler.",
+    "(LOW) Clean lint warnings: unused imports in app/transfer/[id].tsx (Pressable, FlatList, MaterialDesignIcons, router), src/toast.tsx (Pressable), duplicate imports in src/ui.tsx, unused eslint-disable directives in src/journal.ts:63,97."
+  ],
+  "critical_code_review_comments": [
+    "server.py still contains ~900 lines of retired MongoDB CRUD (staff/suppliers/products/receipts/branches/transfers/opnames/issues/movements) + startup seeding of demo data. Frontend has zero references to them (verified by grep + network capture), but the deployed attack surface and the retired-data-source claim don't match.",
+    "pos.ts URL joining is correct: ORIGIN+API_PATH normalized with trailing/leading slash handling (pos.ts:8-11), web proxy used only on Platform.OS==='web' (pos.ts:16-19); /api/v1 appears exactly once end-to-end (verified live via network capture).",
+    "journal.ts implements the contract's section 9 faithfully: queue-before-acknowledge, FIFO single-flight, stable request_id per logical action, atomic drop after server accept, fatal 400/401/403/404/409/422 surfaced not retried.",
+    "auth.tsx:67 enforces role warehouse/admin + active + store_id per contract section 3; 401 anywhere clears session via onUnauthorized.",
+    "Session on web falls back to AsyncStorage (storage/index.web.ts, documented) — acceptable for preview; native uses expo-secure-store. No expo-secure-store bundling issue on web.",
+    "Old test files backend_test.py and test_branches_and_ops.py target the RETIRED MongoDB API — they still pass but are stale relative to the new architecture; keep only test_pos_proxy.py going forward."
+  ],
+  "updated_files": ["/app/backend/tests/test_pos_proxy.py"],
+  "success_rate": {"backend": "100% (8/8 proxy/contract tests)", "frontend": "100% of testable scope (login render, error paths, guards, URL joining). Authenticated POS flows untestable — no POS credentials per contract."},
+  "seed_data_creation": "None. No POS credentials exist, so no data was created in POS. Backend proxy tests are read-only / error-path only.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "POS integration works end-to-end via /api/pos-proxy. No POS test credentials exist — do NOT attempt successful login; only error paths are testable. Toast messages auto-dismiss after 2600ms (toast.tsx:28) — check [data-testid=toast-message] within ~2s of the action. Run proxy regression: `cd /app/backend && EXPO_PUBLIC_BACKEND_URL=https://pos-inventory-hub-68.preview.emergentagent.com python -m pytest tests/test_pos_proxy.py -v -o addopts=''`. Auth gate redirects any unauthenticated deep link to /login. If main agent strips the retired MongoDB routes, re-verify /api/pos-proxy/health still works (proxy is defined at the bottom of server.py).",
+  "rca_of_issue": "Initial 'wrong creds toast not visible' was a TEST TIMING issue, not an app bug: toasts auto-dismiss after 2600ms and the first script checked at 4s. Retest at 2s confirmed 'Email atau password salah' renders verbatim from the POS 401 response."
+}

@@ -17,7 +17,6 @@ import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-
 import { useAuth } from "@/src/auth";
 import { useToast } from "@/src/toast";
 import { Button } from "@/src/ui";
-import { ApiError } from "@/src/api";
 import { makeStyles, useTheme, spacing, radius, fonts } from "@/src/theme";
 
 const BG =
@@ -46,8 +45,7 @@ export default function Login() {
       await signIn(email.trim(), password);
       router.replace("/(tabs)");
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Gagal masuk";
-      toast.show(msg, "error");
+      toast.show(e instanceof Error ? e.message : "Gagal masuk", "error");
     } finally {
       setLoading(false);
     }
@@ -67,15 +65,16 @@ export default function Login() {
         <View style={[styles.content, { paddingTop: insets.top + spacing["3xl"], paddingBottom: insets.bottom + spacing.xl }]}>
           <View style={styles.brandRow}>
             <View style={styles.logoBox}>
-              <MaterialDesignIcons name="barcode-scan" size={34} color={colors.onBrandPrimary} />
+              <MaterialDesignIcons name="barcode-scan" size={30} color={colors.onBrandPrimary} />
             </View>
             <View>
               <Text style={styles.brandTitle}>GUDANG PDA</Text>
-              <Text style={styles.brandSub}>Sistem Penerimaan Barang</Text>
+              <Text style={styles.brandSub}>Terhubung ke POS MASIVI</Text>
             </View>
           </View>
 
           <View style={styles.form}>
+            <Text style={styles.hint}>Masuk dengan akun POS Anda (peran gudang/admin)</Text>
             <Text style={styles.label}>Email</Text>
             <View style={styles.inputWrap}>
               <MaterialDesignIcons name="email-outline" size={22} color={colors.muted} />
@@ -83,7 +82,7 @@ export default function Login() {
                 testID="login-email-input"
                 value={email}
                 onChangeText={setEmail}
-                placeholder="nama@gudang.com"
+                placeholder="petugas@toko.com"
                 placeholderTextColor={colors.muted}
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -143,6 +142,7 @@ const useStyles = makeStyles((c) => ({
   brandTitle: { fontFamily: fonts.display, fontSize: 30, color: c.onSurface, letterSpacing: 1 },
   brandSub: { fontFamily: fonts.body, fontSize: 13, color: c.muted },
   form: { gap: spacing.sm },
+  hint: { fontFamily: fonts.body, fontSize: 13, color: c.onSurfaceTertiary, marginBottom: spacing.sm },
   label: { fontFamily: fonts.bodyMedium, fontSize: 13, color: c.onSurfaceSecondary, marginTop: spacing.md },
   inputWrap: {
     flexDirection: "row",
@@ -155,6 +155,6 @@ const useStyles = makeStyles((c) => ({
     paddingHorizontal: spacing.md,
     minHeight: 48,
   },
-  input: { flex: 1, color: c.onSurface, fontFamily: fonts.body, fontSize: 16 },
+  input: { flex: 1, color: c.onSurface, fontFamily: fonts.body, fontSize: 15 },
   cta: { marginTop: spacing.xl },
 }));

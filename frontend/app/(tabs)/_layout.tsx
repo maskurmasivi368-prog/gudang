@@ -17,17 +17,13 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Icon sf="shippingbox.fill" />
           <NativeTabs.Trigger.Label>Terima</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="audit">
-          <NativeTabs.Trigger.Icon sf="checkmark.seal.fill" />
-          <NativeTabs.Trigger.Label>Audit</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="inventory">
-          <NativeTabs.Trigger.Icon sf="cube.box.fill" />
-          <NativeTabs.Trigger.Label>Stok</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger name="transfer">
+          <NativeTabs.Trigger.Icon sf="arrow.left.arrow.right" />
+          <NativeTabs.Trigger.Label>Transfer</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="account">
-          <NativeTabs.Trigger.Icon sf="square.grid.2x2.fill" />
-          <NativeTabs.Trigger.Label>Menu</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="person.fill" />
+          <NativeTabs.Trigger.Label>Akun</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
     );
@@ -59,29 +55,20 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="audit"
+        name="transfer"
         options={{
-          title: "Audit",
+          title: "Transfer",
           tabBarIcon: ({ color, size }) => (
-            <MaterialDesignIcons name="clipboard-check-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="inventory"
-        options={{
-          title: "Stok",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialDesignIcons name="cube-outline" size={size} color={color} />
+            <MaterialDesignIcons name="swap-horizontal" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
-          title: "Menu",
+          title: "Akun",
           tabBarIcon: ({ color, size }) => (
-            <MaterialDesignIcons name="view-grid-outline" size={size} color={color} />
+            <MaterialDesignIcons name="account-circle-outline" size={size} color={color} />
           ),
         }}
       />

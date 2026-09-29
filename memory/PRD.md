@@ -44,11 +44,18 @@
 - PDA-friendly barcode input: soft keyboard hidden by default (showSoftInputOnFocus=false) + manual-typing toggle. [2026-06]
 - 38/38 backend tests pass; all frontend flows verified. [2026-06]
 
-## Backlog / Remaining
-- P1: Receipt reject/edit-before-approve; transfer edit before send.
-- P1: CSV/API export of approved purchases & movements for external POS.
-- P2: Low-stock alerts screen; supplier price history chart; opname full-snapshot (auto-zero uncounted).
-- P2: race-safe approve; pointerEvents style migration (RN Web warning).
+## Implemented — Integrasi POS MASIVI (2026-09, session 4)
+- Frontend diintegrasikan penuh ke POS MASIVI (https://sm3.masivi.id/api/v1) sebagai SATU-SATUNYA sumber data, mengikuti kontrak /app/memory/POS-GUDANG-API.md + openapi.json. [2026-09]
+- Backend MongoDB lokal DIPENSIUNKAN sebagai sumber data — server.py kini hanya pass-through /api/pos-proxy untuk preview web (native memanggil POS langsung, tanpa CORS). [2026-09]
+- Auth POS: login email/password akun POS (role warehouse/admin + store_id wajib), Bearer + X-Store-Id, token di SecureStore, 401 → logout otomatis. [2026-09]
+- Penerimaan: buat draf → scan (matched_unit/pieces dari konversi POS) → Simpan = PUT SELURUH items + revision server; barcode tak dikenal → scan-notes (bukan produk baru). [2026-09]
+- Transfer: draf (reservasi) → dispatch (stok keluar sekali) → penerima check (parsial, catatan wajib jika selisih) → post (stok masuk); arah Keluar/Masuk. [2026-09]
+- Jurnal offline FIFO per user/store dengan request_id stabil; 409 → stop & muat ulang; timeout ≠ gagal simpan. [2026-09]
+- Fitur lokal lama (audit harga lokal, opname, barang keluar, cabang lokal, laporan lokal) DIHAPUS dari aplikasi — audit/harga/finance tetap di admin POS. [2026-09]
+- 8/8 tes proxy + verifikasi kontrak lolos; login sukses butuh akun POS asli (UAT oleh user). [2026-09]
 
-## Next Tasks
-- Optional external POS webhook/CSV sync beyond the built-in shared catalog.
+## Backlog / Remaining
+- P0: UAT dengan akun POS asli di PDA fisik (iData3Pro / SEUIC Q9): login, scan PCS & BAL isi 12, draf penerimaan, transfer lengkap.
+- P1: notifikasi transfer masuk (badge) dari /branch-transfers/notifications.
+- P1: jika POS menyediakan endpoint opname/barang keluar nanti, tambahkan kembali fitur tersebut via POS.
+- P2: apk build & pengujian perangkat (per kontrak: APK mandiri, bukan preview web).

@@ -1,0 +1,4163 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MASIVI POS — Kontrak Integrasi Gudang PDA",
+    "version": "2026-09-29",
+    "description": "Subset API POS untuk Gudang PDA. Request/query diambil dari app.openapi() kode backend lokal; response shape di bawah dirangkum manual dari implementasi. Tidak mencakup seluruh API POS. Baca POS-GUDANG-API.md untuk peran, stok, retry dan alur. Semua contoh fiktif. Tidak ada kredensial aktif."
+  },
+  "servers": [
+    {
+      "url": "https://sm3.masivi.id/api/v1",
+      "description": "Produksi: hanya transaksi nyata berizin, bukan tempat tes mutasi"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Sesi"
+        ],
+        "summary": "Kesehatan API/database",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "database": {
+                      "type": "string"
+                    },
+                    "api_version": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "example": {
+                  "status": "ok",
+                  "database": "mariadb",
+                  "api_version": "1"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validasi gagal"
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "security": [],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server."
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Sesi"
+        ],
+        "summary": "Login POS",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              },
+              "example": {
+                "email": "petugas@example.com",
+                "password": "GANTI_DENGAN_PASSWORD_AKUN_SENDIRI"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangLogin"
+                },
+                "example": {
+                  "access_token": "EXAMPLE_TOKEN_NOT_VALID",
+                  "token_type": "bearer",
+                  "user": {
+                    "id": "333333333333333333333333",
+                    "email": "petugas@example.com",
+                    "name": "Petugas SM3 Contoh",
+                    "role": "warehouse",
+                    "active": true,
+                    "store_id": "111111111111111111111111",
+                    "cashier_duty": "payment"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "security": [],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server."
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Sesi"
+        ],
+        "summary": "Identitas sesi",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangUser"
+                },
+                "example": {
+                  "id": "333333333333333333333333",
+                  "email": "petugas@example.com",
+                  "name": "Petugas SM3 Contoh",
+                  "role": "warehouse",
+                  "active": true,
+                  "store_id": "111111111111111111111111",
+                  "cashier_duty": "payment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validasi gagal"
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server."
+      }
+    },
+    "/stores": {
+      "get": {
+        "tags": [
+          "Sesi"
+        ],
+        "summary": "Cabang yang dapat dilihat akun",
+        "operationId": "list_stores_api_v1_stores_get",
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GudangStore"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "111111111111111111111111",
+                    "name": "SM3 Contoh",
+                    "is_default": true
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validasi gagal"
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server."
+      }
+    },
+    "/warehouse/suppliers": {
+      "get": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "Supplier tenant",
+        "operationId": "suppliers_api_v1_warehouse_suppliers_get",
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GudangSupplier"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "444444444444444444444444",
+                    "name": "Supplier Contoh"
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validasi gagal"
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/warehouse/product": {
+      "get": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "Scan barcode penerimaan",
+        "operationId": "lookup_api_v1_warehouse_product_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "barcode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Barcode"
+            }
+          },
+          {
+            "name": "product_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "supplier_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Supplier Id"
+            }
+          },
+          {
+            "name": "supplier_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Supplier Name"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangProduct"
+                },
+                "example": {
+                  "id": "555555555555555555555555",
+                  "name": "KOPI CONTOH",
+                  "barcode": "CONTOH-BAL-12",
+                  "base_unit": "PCS",
+                  "units": [
+                    {
+                      "name": "PCS",
+                      "pieces": 1
+                    },
+                    {
+                      "name": "BAL",
+                      "pieces": 12
+                    }
+                  ],
+                  "receiving_packages": [
+                    {
+                      "name": "BAL",
+                      "pieces": 12,
+                      "barcode": "CONTOH-BAL-12"
+                    }
+                  ],
+                  "variants": [],
+                  "supplier_price": null,
+                  "matched_unit": "BAL",
+                  "matched_pieces": 12,
+                  "matched_variant": null,
+                  "stock": 100,
+                  "cost": 100,
+                  "last_purchase_cost": 100,
+                  "supplier_name": "",
+                  "supplier_id": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/warehouse/products": {
+      "get": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "Pencarian manual produk",
+        "operationId": "search_products_api_v1_warehouse_products_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "barcode": {
+                            "type": "string"
+                          },
+                          "base_unit": {
+                            "type": "string"
+                          },
+                          "units": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "pieces": {
+                                  "type": "integer"
+                                }
+                              },
+                              "additionalProperties": true
+                            }
+                          },
+                          "matched_code": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "555555555555555555555555",
+                      "name": "KOPI CONTOH",
+                      "barcode": "CONTOH-PCS",
+                      "base_unit": "PCS",
+                      "units": [
+                        {
+                          "name": "PCS",
+                          "pieces": 1
+                        },
+                        {
+                          "name": "BAL",
+                          "pieces": 12
+                        }
+                      ],
+                      "matched_code": "CONTOH-BAL-12"
+                    }
+                  ],
+                  "has_more": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/warehouse/batches": {
+      "get": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "List Batches",
+        "operationId": "list_batches_api_v1_warehouse_batches_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GudangBatch"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      },
+      "post": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "Buat draf penerimaan kosong",
+        "operationId": "create_batch_api_v1_warehouse_batches_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchCreate"
+              },
+              "example": {
+                "request_id": "00000000-0000-4000-8000-000000000001",
+                "supplier_id": "444444444444444444444444",
+                "supplier_name": "Supplier Contoh",
+                "reference": "SJ-CONTOH-001",
+                "note": "Penerimaan PDA"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangBatch"
+                },
+                "example": {
+                  "id": "666666666666666666666666",
+                  "kind": "batch",
+                  "request_id": "00000000-0000-4000-8000-000000000001",
+                  "supplier_id": "444444444444444444444444",
+                  "supplier_name": "Supplier Contoh",
+                  "reference": "SJ-CONTOH-001",
+                  "note": "Penerimaan PDA",
+                  "items": [],
+                  "state": "draft",
+                  "revision": 0,
+                  "store_id": "111111111111111111111111",
+                  "user_id": "333333333333333333333333",
+                  "by": "Petugas SM3 Contoh",
+                  "created_at": "2026-09-29T03:00:00+00:00",
+                  "updated_at": "2026-09-29T03:00:00+00:00"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/warehouse/batches/{batch_id}": {
+      "get": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "Get Batch",
+        "operationId": "get_batch_api_v1_warehouse_batches__batch_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Batch Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      },
+      "put": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "Ganti seluruh isi draf penerimaan",
+        "operationId": "save_batch_api_v1_warehouse_batches__batch_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Batch Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchSave"
+              },
+              "example": {
+                "request_id": "00000000-0000-4000-8000-000000000002",
+                "revision": 0,
+                "reference": "SJ-CONTOH-001",
+                "note": "Penerimaan PDA",
+                "items": [
+                  {
+                    "product_id": "555555555555555555555555",
+                    "quantity": 4,
+                    "unit": "BAL",
+                    "pieces": 12,
+                    "condition": "SESUAI",
+                    "variant": null
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangBatch"
+                },
+                "example": {
+                  "id": "666666666666666666666666",
+                  "kind": "batch",
+                  "request_id": "00000000-0000-4000-8000-000000000001",
+                  "supplier_id": "444444444444444444444444",
+                  "supplier_name": "Supplier Contoh",
+                  "reference": "SJ-CONTOH-001",
+                  "note": "Penerimaan PDA",
+                  "items": [
+                    {
+                      "product_id": "555555555555555555555555",
+                      "product_name": "KOPI CONTOH",
+                      "barcode": "CONTOH-PCS",
+                      "base_unit": "PCS",
+                      "units": [
+                        {
+                          "name": "PCS",
+                          "pieces": 1
+                        },
+                        {
+                          "name": "BAL",
+                          "pieces": 12
+                        }
+                      ],
+                      "quantity": 4,
+                      "unit": "BAL",
+                      "pieces": 12,
+                      "quantity_base": 48,
+                      "cost": null,
+                      "variant": null,
+                      "condition": "SESUAI",
+                      "good_quantity_base": 48,
+                      "price_source": null,
+                      "price_changed": false
+                    }
+                  ],
+                  "state": "draft",
+                  "revision": 1,
+                  "store_id": "111111111111111111111111",
+                  "user_id": "333333333333333333333333",
+                  "by": "Petugas SM3 Contoh",
+                  "created_at": "2026-09-29T03:00:00+00:00",
+                  "updated_at": "2026-09-29T03:00:00+00:00"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/warehouse/batches/{batch_id}/post": {
+      "post": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "ADMIN: audit dan buat draf pembelian, BUKAN tambah stok",
+        "operationId": "post_batch_api_v1_warehouse_batches__batch_id__post_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Batch Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchPost"
+              },
+              "example": {
+                "revision": 1,
+                "reviewed": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin"
+        ]
+      }
+    },
+    "/warehouse/batches/{batch_id}/cancel": {
+      "post": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "ADMIN: batalkan draf penerimaan",
+        "operationId": "cancel_batch_api_v1_warehouse_batches__batch_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Batch Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelReceivingDraft"
+              },
+              "example": {
+                "revision": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin"
+        ]
+      }
+    },
+    "/warehouse/scan-notes": {
+      "get": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "Listing",
+        "operationId": "listing_api_v1_warehouse_scan_notes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "warehouse",
+                "transfer"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "pending",
+                "reviewed",
+                "all"
+              ],
+              "type": "string",
+              "default": "pending",
+              "title": "State"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GudangScanNote"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      },
+      "post": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "Catat scan tak dikenal tanpa mutasi stok",
+        "operationId": "record_api_v1_warehouse_scan_notes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanNote"
+              },
+              "example": {
+                "request_id": "00000000-0000-4000-8000-000000000005",
+                "context_id": "00000000-0000-4000-8000-000000000006",
+                "kind": "warehouse",
+                "barcode": "CONTOH-BELUM-ADA",
+                "document_id": "666666666666666666666666",
+                "target_store": null
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangScanNote"
+                },
+                "example": {
+                  "id": "888888888888888888888888",
+                  "store_id": "111111111111111111111111",
+                  "kind": "warehouse",
+                  "context_id": "00000000-0000-4000-8000-000000000006",
+                  "document_id": "666666666666666666666666",
+                  "reference": "SJ-CONTOH-001",
+                  "target_store": null,
+                  "target_name": "",
+                  "barcode": "CONTOH-BELUM-ADA",
+                  "scan_count": 1,
+                  "revision": 1,
+                  "first_at": "2026-09-29T03:00:00+00:00",
+                  "first_by": "Petugas SM3 Contoh",
+                  "last_at": "2026-09-29T03:00:00+00:00",
+                  "last_by": "Petugas SM3 Contoh",
+                  "state": "pending"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/warehouse/scan-notes/{note_id}/review": {
+      "post": {
+        "tags": [
+          "Penerimaan"
+        ],
+        "summary": "ADMIN: tandai catatan selesai diperiksa",
+        "operationId": "review_api_v1_warehouse_scan_notes__note_id__review_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Note Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/pda_scan_notes__Review"
+              },
+              "example": {
+                "revision": 1,
+                "note": "Admin memeriksa kemasan produk"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangScanNote"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin"
+        ]
+      }
+    },
+    "/branch-transfers/options": {
+      "get": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Cabang tujuan transfer",
+        "operationId": "options_api_v1_branch_transfers_options_get",
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "active_store": {
+                      "type": "string"
+                    },
+                    "can_edit": {
+                      "type": "boolean"
+                    },
+                    "can_finance": {
+                      "type": "boolean"
+                    },
+                    "stores": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "example": {
+                  "active_store": "111111111111111111111111",
+                  "can_edit": true,
+                  "can_finance": false,
+                  "stores": [
+                    {
+                      "id": "111111111111111111111111",
+                      "name": "SM3 Contoh"
+                    },
+                    {
+                      "id": "222222222222222222222222",
+                      "name": "SM6 Contoh"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validasi gagal"
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server."
+      }
+    },
+    "/branch-transfers/products": {
+      "get": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Cari produk dan konversi transfer",
+        "operationId": "search_products_api_v1_branch_transfers_products_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 150,
+              "title": "Q"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GudangTransferProduct"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "555555555555555555555555",
+                    "name": "KOPI CONTOH",
+                    "stock": 100,
+                    "cost": 100,
+                    "units": [
+                      {
+                        "name": "PCS",
+                        "pieces": 1
+                      },
+                      {
+                        "name": "BAL",
+                        "pieces": 12
+                      }
+                    ],
+                    "matched_unit": "BAL",
+                    "exact": true
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server."
+      }
+    },
+    "/branch-transfers/notifications": {
+      "get": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Notifications",
+        "operationId": "notifications_api_v1_branch_transfers_notifications_get",
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "from": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "number"
+                          },
+                          "unresolved": {
+                            "type": "boolean"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validasi gagal"
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server."
+      }
+    },
+    "/branch-transfers": {
+      "get": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Listing",
+        "operationId": "listing_api_v1_branch_transfers_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "outgoing",
+                "incoming"
+              ],
+              "type": "string",
+              "default": "outgoing",
+              "title": "Direction"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GudangTransferSummary"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server."
+      },
+      "post": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Buat draf transfer dan reservasi stok",
+        "operationId": "create_api_v1_branch_transfers_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Draft"
+              },
+              "example": {
+                "request_id": "00000000-0000-4000-8000-000000000003",
+                "revision": 0,
+                "to_store": "222222222222222222222222",
+                "note": "Kirim dua BAL",
+                "items": [
+                  {
+                    "product_id": "555555555555555555555555",
+                    "qty": 2,
+                    "unit": "BAL",
+                    "pieces": 12
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangTransfer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/branch-transfers/{doc_id}": {
+      "get": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Detail",
+        "operationId": "detail_api_v1_branch_transfers__doc_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangTransfer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server."
+      },
+      "put": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Ganti seluruh isi draf transfer",
+        "operationId": "edit_api_v1_branch_transfers__doc_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Draft"
+              },
+              "example": {
+                "request_id": "00000000-0000-4000-8000-000000000004",
+                "revision": 1,
+                "to_store": "222222222222222222222222",
+                "note": "Jumlah sudah diperiksa",
+                "items": [
+                  {
+                    "product_id": "555555555555555555555555",
+                    "qty": 2,
+                    "unit": "BAL",
+                    "pieces": 12
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangTransfer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/branch-transfers/{doc_id}/dispatch": {
+      "post": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Pengirim: kirim dan kurangi stok fisik",
+        "operationId": "dispatch_api_v1_branch_transfers__doc_id__dispatch_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/branch_transfers__Action"
+              },
+              "example": {
+                "revision": 2,
+                "note": "Barang berangkat",
+                "confirmed": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangTransfer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/branch-transfers/{doc_id}/check": {
+      "post": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Penerima: simpan hasil cek; belum masuk stok",
+        "operationId": "check_api_v1_branch_transfers__doc_id__check_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Check"
+              },
+              "example": {
+                "revision": 3,
+                "note": "Satu BAL belum tiba",
+                "confirmed": true,
+                "items": [
+                  {
+                    "product_id": "555555555555555555555555",
+                    "qty": 1,
+                    "checked": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangTransfer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/branch-transfers/{doc_id}/post": {
+      "post": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Penerima: posting hasil cek, tambah stok",
+        "operationId": "post_api_v1_branch_transfers__doc_id__post_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/branch_transfers__Action"
+              },
+              "example": {
+                "revision": 4,
+                "note": "Posting hasil cek",
+                "confirmed": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangTransfer"
+                },
+                "example": {
+                  "id": "777777777777777777777777",
+                  "kind": "transfer_v2",
+                  "request_no": "TRF-20260929-CONTOH0001",
+                  "from_store": "111111111111111111111111",
+                  "from_store_name": "SM3 Contoh",
+                  "to_store": "222222222222222222222222",
+                  "to_store_name": "SM6 Contoh",
+                  "state": "partial_received",
+                  "revision": 5,
+                  "note": "Jumlah sudah diperiksa",
+                  "created_at": "2026-09-29T03:00:00+00:00",
+                  "updated_at": "2026-09-29T04:00:00+00:00",
+                  "items": [
+                    {
+                      "product_id": "555555555555555555555555",
+                      "name": "KOPI CONTOH",
+                      "base_unit": "PCS",
+                      "unit": "BAL",
+                      "pieces": 12,
+                      "qty": 2,
+                      "unit_cost": 1200,
+                      "sent_qty": 2,
+                      "original_sent_qty": 2,
+                      "received_qty": 1
+                    }
+                  ],
+                  "item_count": 1,
+                  "pending_receipt": null,
+                  "financial_batches": [],
+                  "totals": {
+                    "original_sent_value": 2400,
+                    "draft_value": 2400,
+                    "sent_value": 2400,
+                    "received_value": 1200,
+                    "difference_value": 1200,
+                    "final_value": 1200,
+                    "recorded_value": 0,
+                    "unrecorded_value": 1200
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/branch-transfers/{doc_id}/cancel": {
+      "post": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Pengirim: batalkan draf dan lepaskan reservasi",
+        "operationId": "cancel_api_v1_branch_transfers__doc_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/branch_transfers__Action"
+              },
+              "example": {
+                "revision": 1,
+                "note": "Pengiriman dibatalkan",
+                "confirmed": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GudangTransfer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    },
+    "/branch-transfers/{doc_id}/seen": {
+      "post": {
+        "tags": [
+          "Transfer"
+        ],
+        "summary": "Seen",
+        "operationId": "seen_api_v1_branch_transfers__doc_id__seen_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "X-Store-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Klien Gudang WAJIB mengirim user.store_id terverifikasi. Header opsional pada server karena server dapat memakai cabang akun/default. Bukan ID cabang tujuan. Jangan ubah untuk impersonasi cabang."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil (server menggunakan 200, termasuk pembuatan dokumen).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input/ID tidak valid"
+          },
+          "401": {
+            "description": "Login/token tidak valid atau kedaluwarsa"
+          },
+          "403": {
+            "description": "Akses/akun/cabang ditolak"
+          },
+          "404": {
+            "description": "Data tidak ditemukan dalam scope"
+          },
+          "409": {
+            "description": "Konflik revision, status atau idempotensi; jangan overwrite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas permintaan; tunda pengulangan"
+          },
+          "500": {
+            "description": "Kesalahan server; hasil mutasi belum pasti"
+          },
+          "503": {
+            "description": "Layanan belum tersedia; hasil mutasi belum pasti"
+          }
+        },
+        "x-pos-response-shape-source": "Implementasi Python; endpoint asli tidak memakai response_model. Ringkasan schema di file ini tidak mengubah validasi server.",
+        "x-pos-roles": [
+          "admin",
+          "warehouse"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GudangUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "store_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cashier_duty": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "GudangLogin": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/GudangUser"
+          }
+        },
+        "additionalProperties": true
+      },
+      "GudangStore": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      },
+      "GudangSupplier": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "GudangProduct": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "base_unit": {
+            "type": "string"
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "pieces": {
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "receiving_packages": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "barcode": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "matched_unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "matched_pieces": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "matched_variant": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stock": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "last_purchase_cost": {
+            "type": "number"
+          },
+          "supplier_price": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "supplier_name": {
+            "type": "string"
+          },
+          "supplier_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "GudangBatch": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "supplier_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "supplier_name": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "product_name": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "pieces": {
+                  "type": "integer"
+                },
+                "quantity_base": {
+                  "type": "integer"
+                },
+                "cost": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "variant": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "condition": {
+                  "type": "string"
+                },
+                "good_quantity_base": {
+                  "type": "integer"
+                },
+                "price_source": {
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "state": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "store_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "purchase_draft_id": {
+            "type": "string"
+          },
+          "purchase_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "GudangScanNote": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "store_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "context_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "type": "string"
+          },
+          "target_store": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target_name": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "scan_count": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "first_at": {
+            "type": "string"
+          },
+          "last_at": {
+            "type": "string"
+          },
+          "first_by": {
+            "type": "string"
+          },
+          "last_by": {
+            "type": "string"
+          },
+          "review_note": {
+            "type": "string"
+          },
+          "reviewed_at": {
+            "type": "string"
+          },
+          "reviewed_by": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "GudangTransferProduct": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "stock": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "pieces": {
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "matched_unit": {
+            "type": "string"
+          },
+          "exact": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      },
+      "GudangTransfer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "request_no": {
+            "type": "string"
+          },
+          "from_store": {
+            "type": "string"
+          },
+          "from_store_name": {
+            "type": "string"
+          },
+          "to_store": {
+            "type": "string"
+          },
+          "to_store_name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "note": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "base_unit": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "pieces": {
+                  "type": "integer"
+                },
+                "qty": {
+                  "type": "integer"
+                },
+                "unit_cost": {
+                  "type": "number"
+                },
+                "sent_qty": {
+                  "type": "integer"
+                },
+                "original_sent_qty": {
+                  "type": "integer"
+                },
+                "received_qty": {
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "item_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "pending_receipt": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "pending_revision": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "pending_return": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "receipts": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "financial_batches": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "original_sent_value": {
+                "type": "number"
+              },
+              "draft_value": {
+                "type": "number"
+              },
+              "sent_value": {
+                "type": "number"
+              },
+              "received_value": {
+                "type": "number"
+              },
+              "difference_value": {
+                "type": "number"
+              },
+              "final_value": {
+                "type": "number"
+              },
+              "recorded_value": {
+                "type": "number"
+              },
+              "unrecorded_value": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "GudangTransferSummary": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/GudangTransfer"
+          }
+        ],
+        "description": "Respons daftar TIDAK menyertakan items, history, pending_receipt/revision/return, receipts, financial_batches. Ambil detail sebelum edit."
+      },
+      "LoginInput": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginInput"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "BatchCreate": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{16,64}$",
+            "title": "Request Id"
+          },
+          "supplier_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Id"
+          },
+          "supplier_name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Supplier Name"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 150,
+            "title": "Reference",
+            "default": ""
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "supplier_name"
+        ],
+        "title": "BatchCreate"
+      },
+      "BatchSave": {
+        "properties": {
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9-]{16,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Revision"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 150,
+            "title": "Reference",
+            "default": ""
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note",
+            "default": ""
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchLine"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "revision"
+        ],
+        "title": "BatchSave"
+      },
+      "BatchLine": {
+        "properties": {
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "temporary_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporary Id"
+          },
+          "product_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Name"
+          },
+          "barcode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Barcode"
+          },
+          "base_unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Unit"
+          },
+          "quantity": {
+            "type": "integer",
+            "maximum": 1000000,
+            "exclusiveMinimum": 0,
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Unit"
+          },
+          "pieces": {
+            "type": "integer",
+            "maximum": 1000000,
+            "exclusiveMinimum": 0,
+            "title": "Pieces"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100000000000,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variant"
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "SESUAI",
+              "KURANG",
+              "RUSAK",
+              "LEBIH",
+              "DITOLAK"
+            ],
+            "title": "Condition",
+            "default": "SESUAI"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "quantity",
+          "unit",
+          "pieces"
+        ],
+        "title": "BatchLine"
+      },
+      "BatchPost": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Revision"
+          },
+          "reviewed": {
+            "type": "boolean",
+            "const": true,
+            "title": "Reviewed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "revision",
+          "reviewed"
+        ],
+        "title": "BatchPost"
+      },
+      "CancelReceivingDraft": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "revision"
+        ],
+        "title": "CancelReceivingDraft"
+      },
+      "ScanNote": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{16,64}$",
+            "title": "Request Id"
+          },
+          "context_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{16,64}$",
+            "title": "Context Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "warehouse",
+              "transfer"
+            ],
+            "title": "Kind"
+          },
+          "barcode": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Barcode"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "target_store": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Store"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "context_id",
+          "kind",
+          "barcode"
+        ],
+        "title": "ScanNote"
+      },
+      "pda_scan_notes__Review": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Revision"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "revision",
+          "note"
+        ],
+        "title": "Review"
+      },
+      "Draft": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Revision",
+            "default": 0
+          },
+          "to_store": {
+            "type": "string",
+            "title": "To Store"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 5000,
+            "title": "Note",
+            "default": ""
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Line"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "to_store",
+          "items"
+        ],
+        "title": "Draft"
+      },
+      "Line": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Unit"
+          },
+          "pieces": {
+            "type": "integer",
+            "maximum": 1000000,
+            "exclusiveMinimum": 0,
+            "title": "Pieces"
+          },
+          "qty": {
+            "type": "integer",
+            "maximum": 1000000,
+            "exclusiveMinimum": 0,
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "unit",
+          "pieces",
+          "qty"
+        ],
+        "title": "Line"
+      },
+      "branch_transfers__Action": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Revision"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 5000,
+            "title": "Note",
+            "default": ""
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "revision"
+        ],
+        "title": "Action"
+      },
+      "Check": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Revision"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 5000,
+            "title": "Note",
+            "default": ""
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": false
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Count"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "revision",
+          "items"
+        ],
+        "title": "Check"
+      },
+      "Count": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "qty": {
+            "type": "integer",
+            "maximum": 1000000,
+            "minimum": 0,
+            "title": "Qty"
+          },
+          "checked": {
+            "type": "boolean",
+            "title": "Checked",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "qty"
+        ],
+        "title": "Count"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
