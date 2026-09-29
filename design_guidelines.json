@@ -1,0 +1,132 @@
+{
+  "app_name": "Gudang PDA Scanner",
+  "personality": "7 Dark-First Utility",
+  "personality_one_liner": "A rugged, high-contrast, industrial command center built for fast scanning and error-free operation in dark warehouses.",
+  "color": {
+    "surface": "#121212",
+    "onSurface": "#FFFFFF",
+    "surfaceSecondary": "#1E1E1E",
+    "onSurfaceSecondary": "#E0E0E0",
+    "surfaceTertiary": "#2C2C2C",
+    "onSurfaceTertiary": "#CCCCCC",
+    "surfaceInverse": "#FFFFFF",
+    "onSurfaceInverse": "#000000",
+    "brand": "#FF6B00",
+    "brandPrimary": "#FF6B00",
+    "onBrandPrimary": "#000000",
+    "brandSecondary": "#CC5500",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#331600",
+    "onBrandTertiary": "#FF8C33",
+    "success": "#00E676",
+    "onSuccess": "#000000",
+    "warning": "#FFD600",
+    "onWarning": "#000000",
+    "error": "#FF3B30",
+    "onError": "#FFFFFF",
+    "border": "#333333",
+    "borderStrong": "#555555",
+    "divider": "#222222",
+    "muted": "#888888"
+  },
+  "typography": {
+    "displayFontFamily": "Barlow Condensed",
+    "textFontFamily": "IBM Plex Sans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous spacing for touch targets (min 56pt height for buttons/rows). Use dense spacing between labels and values to maximize screen real estate for lists.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 4,
+    "md": 8,
+    "lg": 12,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "bottom_tabs",
+  "icon_set": "MaterialCommunityIcons",
+  "glassmorphism": {
+    "enabled": "false",
+    "do's": [],
+    "dont's": [
+      "No glassmorphism allowed. This is an industrial PDA application requiring max performance and flat, high-contrast visibility."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-blur",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Login",
+      "purpose": "Secure entry for staff and admins.",
+      "states": {
+        "loading": "Centered high-contrast spinner.",
+        "empty": "N/A",
+        "error": "Red banner (#FF3B30) above inputs."
+      },
+      "layout": "Full-screen background image of warehouse rack with a heavy 80% surface opacity overlay. Large, blocky text inputs. A massive primary CTA spanning the width of the screen."
+    },
+    {
+      "name": "Receive / Scan (Main)",
+      "purpose": "Core goods receiving flow via barcode scanning.",
+      "states": {
+        "loading": "Skeleton rows for the cart.",
+        "empty": "No items scanned yet. Large barcode icon with 'Mulai Scan' text.",
+        "error": "Toast message for unrecognized barcode."
+      },
+      "layout": "Top section: Supplier dropdown/selector with an adjacent '+ Add' button. Middle: High-contrast Barcode input field with a camera icon button next to it (for manual trigger if hardware fails). Bottom: Scrollable list of scanned line items. Each row uses Barlow Condensed for large Qty numbers, alongside + / - stepper buttons. Sticky 'Kirim ke Pembelian' (Send to Purchasing) CTA at the very bottom."
+    },
+    {
+      "name": "Audit Admin",
+      "purpose": "Admin verification of received goods against past prices.",
+      "states": {
+        "loading": "Spinner fetching previous purchase data.",
+        "empty": "No pending audits.",
+        "error": "Retry button if POS sync fails."
+      },
+      "layout": "List of received batches. Tapping a batch expands to show line items. Each item displays current qty and automatically pulls previous purchase prices from the POS for comparison. A fixed 'Approve & Sync' button at the bottom."
+    }
+  ],
+  "images": {
+    "login_background": {
+      "url": "https://images.unsplash.com/photo-1644079446600-219068676743?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDF8MHwxfHNlYXJjaHwyfHxlbXB0eSUyMHdhcmVob3VzZSUyMHNoZWxmJTIwZGFya3xlbnwwfHx8fDE3OTA2MTc2Mzl8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Dark warehouse racking background"
+    },
+    "empty_cart": {
+      "url": "https://images.unsplash.com/photo-1758543102397-e14b5dfdd8bd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwxfHxiYXJjb2RlJTIwc2Nhbm5lciUyMHdhcmVob3VzZXxlbnwwfHx8fDE3OTA2MTc2MzV8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Barcode scanner on table"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the Dark-First Utility (7) personality. Use flat colors, borders, and no shadows.",
+    "Touch Targets must be massively oversized (minimum 56pt height) to accommodate gloved hands on rugged PDA devices. Use full-width buttons wherever possible.",
+    "The primary CTA color is Safety Orange (#FF6B00). Ensure text on it is pure black (#000000) for maximum legibility.",
+    "Barcode scanning behavior: In the Receive screen, if the same barcode is scanned again, increment the Qty on the existing list item rather than adding a new row.",
+    "Use 'Barlow Condensed' for all numeric readouts (Qty, Prices) to allow large font sizes that are readable at a glance. Use 'IBM Plex Sans' for standard labels.",
+    "No glassmorphism anywhere. Ensure low-end Android PDA compatibility by relying exclusively on solid background colors (surfaceSecondary, surfaceTertiary) and border separators.",
+    "Ensure inputs have a clear 'focused' state using `borderStrong` (#555555) or `brandPrimary` (#FF6B00) so the user knows if the hardware scanner is ready to input text."
+  ]
+}
